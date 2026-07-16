@@ -8,6 +8,7 @@
 
 import { argon2id } from "hash-wasm";
 import _sodium from "libsodium-wrappers";
+import { isAeadAuthFailure } from "./aeadError";
 import type { Argon2Params, CryptoPrimitives, PrimitivesBackend } from "./types";
 
 export type { Argon2Params } from "./types";
@@ -91,8 +92,13 @@ export async function xchachaOpen(
   const s = await sodium();
   try {
     return s.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, aad, nonce, key);
-  } catch {
-    return null;
+  } catch (err) {
+    // Only a genuine authentication failure maps to null (→ wrong-secret/corrupt);
+    // any other fault propagates with its real message rather than being masked.
+    if (isAeadAuthFailure(err)) {
+      return null;
+    }
+    throw err;
   }
 }
 
@@ -121,8 +127,11 @@ export async function boxSealOpen(
   const s = await sodium();
   try {
     return s.crypto_box_seal_open(sealed, publicKey, privateKey);
-  } catch {
-    return null;
+  } catch (err) {
+    if (isAeadAuthFailure(err)) {
+      return null;
+    }
+    throw err;
   }
 }
 

@@ -7,7 +7,18 @@
 //                     fixes the lane count) — the reason this module exists.
 //   SHA-256 / HKDF  → @noble/hashes (pure JS, byte-identical to WebCrypto here;
 //                     proven against the same pinned key-derivation vectors).
-//   XChaCha20 / box → react-native-libsodium (JSI, libsodium-wrappers API).
+//   XChaCha20 / box → the pure-JS @noble backend in ./nobleSodium (byte-identical
+//                     to libsodium; proven against libsodium-wrappers in CI).
+//   randombytes     → react-native-libsodium's JSI CSPRNG (synchronous).
+//
+// Why NOT react-native-libsodium for XChaCha / the sealed box: its JSI AEAD reads
+// additional-data ONLY as a JS string and feeds that string's UTF-8 bytes to
+// libsodium as the AAD (cpp: `arguments[1].asString(runtime).utf8(runtime)` →
+// `additionalData.data()/.length()`). The WHARFV/WHARFP formats bind the RAW binary
+// header as AAD, which is not valid UTF-8 and cannot survive a JS-string round-trip
+// — so every seal/open threw "input type not yet implemented" (Uint8Array/null AAD)
+// or would corrupt the AAD. ./nobleSodium takes binary AAD directly. Only the RNG
+// still crosses the JSI bridge, where no binary-AAD marshalling is involved.
 //
 // Metro resolves this file on device; Jest never loads it (it takes index.node).
 // The verbatim crypto layer above depends only on the shared contract, so
@@ -18,6 +29,13 @@ import { sha256 as nobleSha256 } from "@noble/hashes/sha2.js";
 import sodium from "react-native-libsodium";
 import { argon2idRaw } from "../../../modules/wharf-argon2";
 import { fromBase64, toBase64 } from "../base64";
+import {
+  boxKeypairNoble,
+  boxSealNoble,
+  boxSealOpenNoble,
+  xchachaOpenNoble,
+  xchachaSealNoble,
+} from "./nobleSodium";
 import type { Argon2Params, CryptoPrimitives, PrimitivesBackend } from "./types";
 
 export type { Argon2Params } from "./types";
@@ -54,23 +72,13 @@ export async function hkdfSha256(ikm: Uint8Array, info: string, length = 32): Pr
   return hkdf(nobleSha256, ikm, new Uint8Array(0), encoder.encode(info), length);
 }
 
-let sodiumReady: Promise<typeof sodium> | null = null;
-
-async function ready(): Promise<typeof sodium> {
-  if (!sodiumReady) {
-    sodiumReady = sodium.ready.then(() => sodium);
-  }
-  return sodiumReady;
-}
-
 export async function xchachaSeal(
   key: Uint8Array,
   nonce: Uint8Array,
   plaintext: Uint8Array,
   aad: Uint8Array | null,
 ): Promise<Uint8Array> {
-  const s = await ready();
-  return s.crypto_aead_xchacha20poly1305_ietf_encrypt(plaintext, aad, null, nonce, key);
+  return xchachaSealNoble(key, nonce, plaintext, aad);
 }
 
 export async function xchachaOpen(
@@ -79,42 +87,30 @@ export async function xchachaOpen(
   ciphertext: Uint8Array,
   aad: Uint8Array | null,
 ): Promise<Uint8Array | null> {
-  const s = await ready();
-  try {
-    return s.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, aad, nonce, key);
-  } catch {
-    return null;
-  }
+  return xchachaOpenNoble(key, nonce, ciphertext, aad);
 }
 
 export function randomBytes(length: number): Uint8Array {
   // sodium.ready has resolved by the time any crypto flow reaches this (unlock
-  // always derives a KEK via libsodium first); randombytes_buf is synchronous.
+  // always derives a KEK first); randombytes_buf is a synchronous JSI CSPRNG and
+  // needs none of the binary-AAD marshalling that ruled libsodium out above.
   return sodium.randombytes_buf(length);
 }
 
 export async function boxKeypair(): Promise<{ publicKey: Uint8Array; privateKey: Uint8Array }> {
-  const s = await ready();
-  const kp = s.crypto_box_keypair();
-  return { publicKey: kp.publicKey, privateKey: kp.privateKey };
+  return boxKeypairNoble(randomBytes);
 }
 
 export async function boxSeal(message: Uint8Array, recipientPub: Uint8Array): Promise<Uint8Array> {
-  const s = await ready();
-  return s.crypto_box_seal(message, recipientPub);
+  return boxSealNoble(message, recipientPub, randomBytes);
 }
 
 export async function boxSealOpen(
   sealed: Uint8Array,
-  publicKey: Uint8Array,
+  _publicKey: Uint8Array,
   privateKey: Uint8Array,
 ): Promise<Uint8Array | null> {
-  const s = await ready();
-  try {
-    return s.crypto_box_seal_open(sealed, publicKey, privateKey);
-  } catch {
-    return null;
-  }
+  return boxSealOpenNoble(sealed, privateKey);
 }
 
 // Compile-time proof that this backend satisfies the shared contract.
