@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components";
 import { EmailLoginForm } from "@/features/signIn/EmailLoginForm";
@@ -34,13 +34,33 @@ export default function SignInScreen() {
           />
         ) : (
           <View className="gap-3">
-            <Button label={t("signIn.continueGoogle")} onPress={logic.openProviderSignIn} />
-            <Button label={t("signIn.continueGithub")} onPress={logic.openProviderSignIn} />
+            {logic.providerError ? (
+              <Text className="text-center text-xs text-danger">{logic.providerError}</Text>
+            ) : null}
+            <Button
+              label={t("signIn.continueGoogle")}
+              onPress={() => logic.signInWithProvider("google")}
+              disabled={logic.isProviderDisabled("google")}
+              loading={logic.providerPending === "google"}
+            />
+            <Button
+              label={t("signIn.continueGithub")}
+              onPress={() => logic.signInWithProvider("github")}
+              disabled={logic.isProviderDisabled("github")}
+              loading={logic.providerPending === "github"}
+            />
             <Button
               label={t("signIn.continueEmail")}
               variant="outline"
               onPress={logic.openEmailForm}
             />
+            <Pressable
+              onPress={logic.goToPair}
+              accessibilityRole="button"
+              className="items-center py-1"
+            >
+              <Text className="text-sm text-muted">{t("signIn.usePairingCode")}</Text>
+            </Pressable>
           </View>
         )}
         <Text className="mt-6 text-center text-[13px] leading-5 text-muted">

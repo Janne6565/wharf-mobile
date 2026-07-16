@@ -8,12 +8,14 @@
 
 import { getAuthentication } from "@/api/generated/authentication/authentication";
 import { getDeviceCodes } from "@/api/generated/device-codes/device-codes";
+import { getOauth } from "@/api/generated/oauth/oauth";
 import { getProjects } from "@/api/generated/projects/projects";
 import { getUsers } from "@/api/generated/users/users";
 import { getVault as getVaultGroup } from "@/api/generated/vault/vault";
 
 const authApi = getAuthentication();
 const deviceCodesApi = getDeviceCodes();
+const oauthApi = getOauth();
 const projectsApi = getProjects();
 const usersApi = getUsers();
 const vaultApi = getVaultGroup();
@@ -21,6 +23,9 @@ const vaultApi = getVaultGroup();
 export const login = authApi.login;
 export const refresh = authApi.refresh;
 export const exchangeDeviceCode = deviceCodesApi.exchangeDeviceCode;
+// Enabled OAuth provider slugs — drives which social buttons the sign-in screen
+// lets the user tap (the browser device-code flow lives in @/auth/oauthSignIn).
+export const listOAuthProviders = oauthApi.listOAuthProviders;
 export const getVault = vaultApi.getVault;
 export const updateVault = vaultApi.updateVault;
 export const getCurrentUser = usersApi.getCurrentUser;

@@ -1,6 +1,7 @@
 // Logic for the sign-in screen (mock 01). Two entries:
-//   Google/GitHub — the system browser opens the web app (which handles OAuth
-//     and shows a pairing code), and the app routes to the pairing-code screen.
+//   Google/GitHub — the system browser opens the backend's OAuth authorize
+//     endpoint; on success it deep-links back with a device code that we exchange
+//     for a session entirely in-app (see @/auth/oauthSignIn). No manual code typing.
 //   Email — on-device zero-knowledge derivation + DIRECT login, then the vault
 //     is fetched and unlocked with the same password in one flow, so the user
 //     types it exactly once (see emailLogin for why argon2 still runs twice).
@@ -9,16 +10,16 @@
 // translated error messages directly (REACT.md exception).
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { API_BASE } from "@/api/axios-instance";
 import { getHttpStatus } from "@/api/httpError";
+import { listOAuthProviders } from "@/api/wharf";
 import { emailLogin } from "@/auth/emailLogin";
+import { OAuthSignInError, oauthSignIn } from "@/auth/oauthSignIn";
 import { establishSession } from "@/auth/session";
 import { offerBiometricEnrollment } from "@/features/unlock/enrollmentOffer";
 import { EMAIL_PATTERN } from "@/lib/validators";
@@ -29,11 +30,19 @@ export interface SignInValues {
   password: string;
 }
 
+// Display names for the social providers, used only in the failure message
+// (the backend slugs are lower-case; the UI wants "GitHub", not "github").
+const PROVIDER_LABELS: Record<string, string> = { google: "Google", github: "GitHub" };
+function providerLabel(provider: string): string {
+  return PROVIDER_LABELS[provider] ?? provider;
+}
+
 export function useSignInLogic() {
   const { t } = useTranslation();
   const router = useRouter();
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [providerError, setProviderError] = useState<string | null>(null);
 
   const schema = useMemo(
     () =>
@@ -52,12 +61,54 @@ export function useSignInLogic() {
     mode: "onSubmit",
   });
 
-  // OAuth accounts sign in on the web and hand the session over via a pairing
-  // code; the browser opens on top and the code-entry screen waits beneath it.
-  const openProviderSignIn = useCallback(() => {
-    void WebBrowser.openBrowserAsync(API_BASE);
-    router.push("/pair");
-  }, [router]);
+  // Which social buttons to enable — the backend only advertises providers it has
+  // credentials for. While this loads (and if it fails) the buttons stay disabled.
+  const providersQuery = useQuery({
+    queryKey: ["oauth-providers"],
+    queryFn: () => listOAuthProviders(),
+  });
+  const enabledProviders = providersQuery.data?.providers ?? [];
+
+  // Browser device-code sign-in: open the provider, exchange the returned code for
+  // a session, then let the routing guards take over (an OAuth account's vault is
+  // still locked, so the user lands on the unlock screen — that is correct).
+  const providerMutation = useMutation({
+    mutationFn: async (provider: string) => {
+      const outcome = await oauthSignIn(provider);
+      if (outcome.status === "session") {
+        await establishSession(outcome.session);
+      }
+      return outcome;
+    },
+    onError: (error: unknown, provider) => {
+      if (error instanceof OAuthSignInError && error.code === "email_not_verified") {
+        setProviderError(t("signIn.errors.oauthEmailUnverified"));
+      } else {
+        setProviderError(t("signIn.errors.oauthFailed", { provider: providerLabel(provider) }));
+      }
+    },
+  });
+
+  const signInWithProvider = useCallback(
+    (provider: string) => {
+      setProviderError(null);
+      providerMutation.mutate(provider);
+    },
+    [providerMutation],
+  );
+
+  // Only the tapped button spins; every provider button is blocked while any
+  // sign-in is in flight, while the providers list loads, or if it is disabled.
+  const providerPending = providerMutation.isPending ? providerMutation.variables : undefined;
+  const isProviderDisabled = useCallback(
+    (provider: string) =>
+      providersQuery.isLoading ||
+      providerMutation.isPending ||
+      !enabledProviders.includes(provider),
+    [providersQuery.isLoading, providerMutation.isPending, enabledProviders],
+  );
+
+  const goToPair = useCallback(() => router.push("/pair"), [router]);
 
   const mutation = useMutation({
     mutationFn: async (values: SignInValues) => {
@@ -113,7 +164,11 @@ export function useSignInLogic() {
     showEmailForm,
     openEmailForm,
     closeEmailForm,
-    openProviderSignIn,
+    signInWithProvider,
+    isProviderDisabled,
+    providerPending,
+    providerError,
+    goToPair,
     form,
     onSubmit,
     canSubmit,

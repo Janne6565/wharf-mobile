@@ -19,6 +19,7 @@ const enCommon = {
     continueGoogle: "Continue with Google",
     continueGithub: "Continue with GitHub",
     continueEmail: "Continue with email",
+    usePairingCode: "Enter a pairing code instead",
     footer: "Your vault is end-to-end encrypted.\nPrivate keys never leave your devices.",
     emailLabel: "Email",
     emailPlaceholder: "you@example.com",
@@ -31,6 +32,8 @@ const enCommon = {
       invalidCredentials: "Email or password is incorrect.",
       rateLimited: "Too many attempts. Try again in a moment.",
       generic: "Sign-in failed. Check your connection and try again.",
+      oauthFailed: "Couldn't sign in with {{provider}}. Try again.",
+      oauthEmailUnverified: "Verify your email with your provider, then try again.",
     },
   },
   pair: {
@@ -256,6 +259,7 @@ const deCommon: CommonSchema = {
     continueGoogle: "Mit Google fortfahren",
     continueGithub: "Mit GitHub fortfahren",
     continueEmail: "Mit E-Mail fortfahren",
+    usePairingCode: "Stattdessen Kopplungscode eingeben",
     footer:
       "Dein Tresor ist Ende-zu-Ende-verschlüsselt.\nPrivate Schlüssel verlassen nie deine Geräte.",
     emailLabel: "E-Mail",
@@ -269,6 +273,8 @@ const deCommon: CommonSchema = {
       invalidCredentials: "E-Mail oder Passwort ist falsch.",
       rateLimited: "Zu viele Versuche. Warte einen Moment.",
       generic: "Anmeldung fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.",
+      oauthFailed: "Anmeldung mit {{provider}} fehlgeschlagen. Versuche es erneut.",
+      oauthEmailUnverified: "Bestätige deine E-Mail bei deinem Anbieter und versuche es erneut.",
     },
   },
   pair: {

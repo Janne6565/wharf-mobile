@@ -9,6 +9,7 @@
  */
 import type {
   OAuthProvidersResponse,
+  OauthAuthorizeParams,
   OauthCallbackParams
 } from '../model';
 
@@ -20,7 +21,7 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
   export const getOauth = () => {
 /**
- * Validates and consumes the state, exchanges the code server-to-server, requires a verified email, links/creates the local account, sets the httpOnly refresh cookie and 302-redirects to /oauth/complete. On any failure it redirects to /oauth/complete?error=<code> (provider_disabled | invalid_state | email_not_verified | provider_error | server_error).
+ * Validates and consumes the state (which carries the initiating client), exchanges the code server-to-server, requires a verified email and links/creates the local account. For a web flow it sets the httpOnly refresh cookie and 302-redirects to /oauth/complete; for a mobile flow it issues a one-time device code and 302-redirects to wharf://oauth?code=<code> (no cookie). On failure it redirects to the client's error target with ?error=<code> (provider_disabled | email_not_verified | provider_error | server_error); invalid_state, whose client is unknowable, always uses the web target /oauth/complete?error=invalid_state.
  * @summary Handle the OAuth provider callback
  */
 const oauthCallback = (
@@ -34,14 +35,16 @@ const oauthCallback = (
       options);
     }
   /**
- * 302-redirects to the provider's consent page with a one-time state. A disabled/unknown provider redirects to /oauth/complete?error=provider_disabled.
+ * 302-redirects to the provider's consent page with a one-time state that records the initiating client. Pass client=mobile to hand the session back over the wharf://oauth deep link (default web). A disabled/unknown provider redirects to the matching error target: /oauth/complete?error=provider_disabled for web, wharf://oauth?error=provider_disabled for mobile.
  * @summary Begin the OAuth authorization-code flow
  */
 const oauthAuthorize = (
     provider: string,
+    params?: OauthAuthorizeParams,
  options?: SecondParameter<typeof customInstance<unknown>>,) => {
       return customInstance<unknown>(
-      {url: `/api/v1/auth/oauth/${provider}/authorize`, method: 'GET'
+      {url: `/api/v1/auth/oauth/${provider}/authorize`, method: 'GET',
+        params
     },
       options);
     }

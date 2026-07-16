@@ -19,6 +19,7 @@ export * from './deviceCodeResponse';
 export * from './loginRequest';
 export * from './loginRequestTokenMode';
 export * from './myInvite';
+export * from './oauthAuthorizeParams';
 export * from './oauthCallbackParams';
 export * from './oAuthProvidersResponse';
 export * from './pendingKey';
