@@ -10,6 +10,7 @@ for the full milestone plan; M0 (this scaffold) delivers the tab shell only.
 @docs/conventions/REACT.md
 @docs/conventions/AUTH.md
 @docs/conventions/TOOLS.md
+@docs/conventions/CICD.md
 @docs/conventions/wharf.md
 
 To change a convention, edit the source in `~/projects/agents` and re-run

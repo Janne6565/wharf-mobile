@@ -126,6 +126,54 @@ On iOS the build lands in **TestFlight** (add internal testers in App Store Conn
 on Android it lands on the **internal testing** track (add testers by email in the Play
 Console). Both first submissions are interactive (Apple 2FA / Play app selection).
 
+### CI builds (GitHub Actions)
+
+`.github/workflows/eas-build.yml` runs EAS builds from CI. Builds are gated on the
+same `typecheck · lint · test` suite as `ci.yml`, then dispatched to EAS with
+`--no-wait` (EAS builds on its own servers; the Actions job returns immediately —
+watch progress on [expo.dev](https://expo.dev)).
+
+**One-time setup:**
+
+1. Run the **first build of each profile interactively from your machine** (see
+   [First builds](#first-builds-per-profile-in-easjson) above) so EAS generates and
+   stores the iOS Distribution certificate / provisioning profile and the Android
+   upload keystore. CI cannot create these — it reuses the credentials saved on EAS.
+2. Create an Expo **access token** at
+   `https://expo.dev/accounts/janne6565/settings/access-tokens`.
+3. Add it as a repo secret so CI can authenticate to EAS:
+
+   ```sh
+   gh secret set EXPO_TOKEN -R Janne6565/wharf-mobile
+   ```
+
+4. *(Optional)* Enable auto-submit on tag builds — only after the
+   `submit.production` placeholders in `eas.json` are filled in and the store app
+   records exist (see [Submitting](#submitting)):
+
+   ```sh
+   gh variable set EAS_AUTO_SUBMIT --body true -R Janne6565/wharf-mobile
+   ```
+
+   While this variable is unset (the default), tagging still builds production but
+   does **not** submit — so an unconfigured store setup never fails a tag build.
+
+**Manual builds:** GitHub → **Actions → EAS Build → Run workflow**, then pick a
+`platform` (ios / android / all) and `profile` (development / preview / production).
+
+**Ship production** (house convention — cutting a `vX.Y.Z` tag ships prod):
+
+```sh
+git tag v1.2.3
+git push --tags
+```
+
+The tag push triggers a production build for **both** platforms. If
+`EAS_AUTO_SUBMIT=true`, EAS also queues the TestFlight / Play internal submission
+after each build finishes; otherwise submit manually with `eas submit` (see above).
+Per house policy, releases go out through CI on a tag — never `eas build`/`submit`
+from a local machine for a real release.
+
 ## What's next (M7 — post-v1)
 
 The SSH terminal: a gomobile-compiled Go SSH engine behind an Expo Module with a

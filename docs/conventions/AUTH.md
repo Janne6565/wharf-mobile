@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: concepts/AUTH.md @ 043bdf9.
+<!-- AUTO-SYNCED from agents KB: concepts/AUTH.md @ 3f889bd.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Authentication & Authorization
