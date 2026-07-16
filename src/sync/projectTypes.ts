@@ -88,3 +88,48 @@ export interface ProjectSyncDeps {
   // the decrypted payload, or null when the cache is missing / no longer opens.
   loadCached(id: string, entry: ProjectMetaEntry): Promise<Uint8Array | null>;
 }
+
+// ── Finalize pass (M5, light admin) ──────────────────────────────────────────
+// The admin/owner half of the accept-then-finalize invite flow: a member who
+// accepts an invite joins awaiting-key (no wrapped DEK); an admin/owner client,
+// on its next projects pass, seals the project DEK to each such member's
+// published public key and submits it. Split from side-effects like the read
+// engine, so the pass logic (finalize.ts) tests against injected fakes.
+
+// One project the finalize pass may act on: the finalize engine skips it unless
+// the caller is admin/owner (only they may seal for others).
+export interface FinalizeTarget {
+  readonly id: string;
+  readonly role: ProjectRoleName;
+}
+
+// A member awaiting a key, decoded for sealing: the target user id + their raw
+// X25519 public key bytes. The deps binder decodes the base64 the API returns.
+export interface PendingMember {
+  readonly userId: string;
+  readonly publicKey: Uint8Array;
+}
+
+// The side-effecting collaborators the finalize engine drives. Every method is
+// async and may throw; the engine isolates every project and every member in a
+// try/catch so one failure never blocks the rest.
+export interface FinalizeDeps {
+  // Fetch a project's vault + the caller's current wrapped DEK (for the version
+  // the seal is bound to, and to prove we can open the project at all).
+  fetchVault(id: string): Promise<RemoteProjectVault>;
+  // Unwrap the caller's wrapped project DEK. Resolves null when it does not open
+  // (we are not keyed yet) → the project is skipped, a later pass resolves it.
+  openDek(wrappedDek: Uint8Array): Promise<Uint8Array | null>;
+  // List members awaiting a key who have published a public key to seal against.
+  getPendingKeys(id: string): Promise<readonly PendingMember[]>;
+  // Seal the 32-byte project DEK to a member's public key → 80-byte wrapped DEK.
+  sealDek(dek: Uint8Array, memberPublicKey: Uint8Array): Promise<Uint8Array>;
+  // Submit a sealed DEK for a member at the given vault version. Throws 409 when
+  // the vault has since rotated (the engine skips that member silently).
+  submitMemberKey(
+    id: string,
+    userId: string,
+    wrappedDek: Uint8Array,
+    vaultVersion: number,
+  ): Promise<void>;
+}

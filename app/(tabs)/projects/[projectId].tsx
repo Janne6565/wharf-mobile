@@ -1,36 +1,115 @@
-import { ChevronLeft, Circle } from "lucide-react-native";
+import { ChevronLeft, Circle, Plus, X } from "lucide-react-native";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import type { ProjectInvite } from "@/api/generated/model";
 import { Card, HostRow, RowDivider, ScreenContainer, SectionLabel } from "@/components";
+import { InviteSheet } from "@/features/projects/InviteSheet";
 import { MemberRow } from "@/features/projects/MemberRow";
 import { useProjectDetailLogic } from "@/features/projects/useProjectDetailLogic";
 import { colors } from "@/theme/colors";
 import { hostTarget } from "@/vault/document";
 
-function PendingInviteLine({ invite }: { readonly invite: ProjectInvite }) {
+interface PendingInviteLineProps {
+  readonly invite: ProjectInvite;
+  readonly canRevoke: boolean;
+  readonly revoking: boolean;
+  readonly onRevoke: (invite: ProjectInvite) => void;
+}
+
+function PendingInviteLine({ invite, canRevoke, revoking, onRevoke }: PendingInviteLineProps) {
   const { t } = useTranslation();
   return (
     <View className="mt-2.5 flex-row items-center gap-2.5 px-1">
       <Circle size={11} color={colors.warn} />
       <Text className="text-[13px] text-warn">{invite.email}</Text>
-      <Text className="text-xs text-muted">{t("projectDetail.inviteAwaiting")}</Text>
+      <Text className="flex-1 text-xs text-muted">{t("projectDetail.inviteAwaiting")}</Text>
+      {canRevoke ? <RevokeButton revoking={revoking} onPress={() => onRevoke(invite)} /> : null}
     </View>
   );
 }
 
+function RevokeButton({
+  revoking,
+  onPress,
+}: {
+  readonly revoking: boolean;
+  readonly onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={revoking}
+      accessibilityRole="button"
+      accessibilityLabel={t("projectDetail.revoke")}
+      className="flex-row items-center gap-1 px-1 py-0.5"
+      testID="invite-revoke"
+    >
+      {revoking ? (
+        <ActivityIndicator size="small" color={colors.muted} />
+      ) : (
+        <>
+          <X size={13} color={colors.muted} />
+          <Text className="text-xs text-muted">{t("projectDetail.revoke")}</Text>
+        </>
+      )}
+    </Pressable>
+  );
+}
+
+function InviteMemberRow({ onPress }: { readonly onPress: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      className="flex-row items-center gap-2 px-4 py-3"
+      testID="invite-member-row"
+    >
+      <Plus size={16} color={colors.accent} />
+      <Text className="text-[15px] text-accent">{t("projectDetail.inviteAction")}</Text>
+    </Pressable>
+  );
+}
+
 // Project detail (mock screen 04): back link, title + "desc · N hosts", a members
-// card, pending-invite lines, and a read-only hosts card. "+ Invite member" is not
-// active this milestone (M5), so it is intentionally omitted.
+// card with the "+ Invite member" row (admin/owner only), pending-invite lines
+// with a revoke action (admin/owner), and a read-only hosts card.
 export default function ProjectDetailScreen() {
   const { t } = useTranslation();
-  const { project, hosts, members, invites, currentUserId, goBack, openHost } =
-    useProjectDetailLogic();
+  const {
+    project,
+    hosts,
+    members,
+    invites,
+    currentUserId,
+    canAdmin,
+    goBack,
+    openHost,
+    inviteOpen,
+    openInvite,
+    closeInvite,
+    inviteMember,
+    inviteSaving,
+    inviteError,
+    inviteDone,
+    resetInvite,
+    confirmRevoke,
+    revokingId,
+  } = useProjectDetailLogic();
 
   const summary = project?.description
     ? t("projectDetail.summary", { description: project.description, hosts: String(hosts.length) })
     : t("projectDetail.summaryNoDesc", { hosts: String(hosts.length) });
+
+  const onRevoke = (invite: ProjectInvite) =>
+    confirmRevoke(invite.id ?? "", {
+      title: t("projectDetail.revokeConfirmTitle"),
+      body: t("projectDetail.revokeConfirmBody", { email: invite.email ?? "" }),
+      confirm: t("projectDetail.revokeConfirm"),
+      cancel: t("projectDetail.revokeCancel"),
+    });
 
   return (
     <ScreenContainer>
@@ -48,7 +127,7 @@ export default function ProjectDetailScreen() {
           <Text className="mt-1 text-[26px] font-bold text-fg">{project.name}</Text>
           <Text className="mt-0.5 text-[13px] text-muted">{summary}</Text>
 
-          {members.length > 0 ? (
+          {members.length > 0 || canAdmin ? (
             <View className="mt-6">
               <SectionLabel>{t("projectDetail.members")}</SectionLabel>
               <Card>
@@ -58,11 +137,23 @@ export default function ProjectDetailScreen() {
                     <MemberRow member={member} isYou={member.userId === currentUserId} />
                   </Fragment>
                 ))}
+                {canAdmin ? (
+                  <>
+                    {members.length > 0 ? <RowDivider /> : null}
+                    <InviteMemberRow onPress={openInvite} />
+                  </>
+                ) : null}
               </Card>
             </View>
           ) : null}
           {invites.map((invite) => (
-            <PendingInviteLine key={invite.id ?? invite.email} invite={invite} />
+            <PendingInviteLine
+              key={invite.id ?? invite.email}
+              invite={invite}
+              canRevoke={canAdmin}
+              revoking={revokingId === invite.id}
+              onRevoke={onRevoke}
+            />
           ))}
 
           <View className="mt-5">
@@ -85,6 +176,18 @@ export default function ProjectDetailScreen() {
               <Text className="px-1 text-sm text-muted">{t("projectDetail.noHosts")}</Text>
             )}
           </View>
+
+          {canAdmin ? (
+            <InviteSheet
+              visible={inviteOpen}
+              onClose={closeInvite}
+              onInvite={inviteMember}
+              saving={inviteSaving}
+              error={inviteError}
+              done={inviteDone}
+              reset={resetInvite}
+            />
+          ) : null}
         </>
       ) : (
         <Text className="mt-16 text-center text-sm text-muted">{t("projectDetail.notFound")}</Text>

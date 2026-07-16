@@ -22,6 +22,8 @@ import {
 } from "@/store/projectsSlice";
 import { ensureIdentity } from "@/vault/identity";
 import { runSync } from "./engine";
+import { runFinalizePass } from "./finalize";
+import { makeFinalizeDeps } from "./finalizeDeps";
 import { ProjectSyncEngine } from "./projects";
 import { makeProjectSyncDeps } from "./projectsDeps";
 import type { ProjectsOutcome } from "./projectTypes";
@@ -62,7 +64,19 @@ async function doPass(): Promise<void> {
   }
 
   const engine = new ProjectSyncEngine(makeProjectSyncDeps(identity.keys));
-  applyOutcome(await engine.sync());
+  const outcome = await engine.sync();
+  applyOutcome(outcome);
+
+  // Finalize pass: after the read pass, seal + submit the project DEK for every
+  // pending member across the caller's admin/owner projects. Only meaningful on a
+  // completed online pass (the offline path has no network); best-effort, so a
+  // failure here never clobbers the views just applied. Re-firing the whole
+  // projects sync after an invite (createInvite → runProjectsSync) re-runs this,
+  // catching a member who accepted an earlier invite and is already pending.
+  if (outcome.kind === "ok") {
+    const targets = outcome.views.map((v) => ({ id: v.id, role: v.role }));
+    await runFinalizePass(makeFinalizeDeps(identity.keys), targets);
+  }
 }
 
 // runProjectsSync executes one full projects pass, single-flight with a trailing

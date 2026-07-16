@@ -1,5 +1,8 @@
-// Pure helpers for the projects feature: role → i18n key, and avatar initials.
-// Framework-free so they unit-test without React (REACT.md lib.ts convention).
+// Pure helpers for the projects feature: role → i18n key, avatar initials, and
+// the admin-gate predicate. Framework-free so they unit-test without React
+// (REACT.md lib.ts convention).
+
+import type { ProjectRole } from "@/api/generated/model";
 
 // The i18n key for a role's display label. `as const` keeps the values as literal
 // keys so t() (which requires a known key) accepts ROLE_LABEL_KEY[role] directly.
@@ -8,6 +11,13 @@ export const ROLE_LABEL_KEY = {
   ADMIN: "projects.roleAdmin",
   MEMBER: "projects.roleMember",
 } as const;
+
+// Whether a role may administer a project: create/revoke invites and run the
+// finalize pass. Owner and admin qualify; a plain member (or an unknown role)
+// does not, so the invite/revoke affordances stay hidden for members.
+export function canAdminister(role: ProjectRole | undefined): boolean {
+  return role === "ADMIN" || role === "OWNER";
+}
 
 // Two-letter uppercase initials for an avatar, derived from an email or name.
 // Splits the email local-part on common separators; falls back to its first two

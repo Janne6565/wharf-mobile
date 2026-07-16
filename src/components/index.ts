@@ -10,4 +10,5 @@ export { ScreenTitle } from "./ScreenTitle";
 export { SearchField } from "./SearchField";
 export { SectionLabel } from "./SectionLabel";
 export { SettingsRow } from "./SettingsRow";
+export { Sheet } from "./Sheet";
 export { type HostStatus, StatusDot } from "./StatusDot";
