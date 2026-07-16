@@ -5,7 +5,3 @@ Edit the source docs there and re-run `sync-conventions.sh` — never edit these
 
 - [AGENT.md](AGENT.md)
 - [wharf.md](wharf.md)
-- [REACT.md](REACT.md)
-- [AUTH.md](AUTH.md)
-- [TOOLS.md](TOOLS.md)
-- [CICD.md](CICD.md)
