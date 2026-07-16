@@ -30,6 +30,10 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-dev-client",
+    // react-native-libsodium ships an Expo config plugin (app.plugin.js) that
+    // wires the JSI native build. The wharf-argon2 local module (modules/) is
+    // auto-linked by expo-modules-autolinking and needs no plugin entry.
+    "react-native-libsodium",
     [
       "expo-splash-screen",
       {

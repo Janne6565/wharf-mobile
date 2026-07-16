@@ -1,4 +1,6 @@
 import "../global.css";
+// Installs btoa/atob on Hermes (no-op on Node/web) before any crypto runs.
+import "@/lib/base64Polyfill";
 import "@/i18n/config";
 
 import { QueryClientProvider } from "@tanstack/react-query";

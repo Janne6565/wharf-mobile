@@ -5,7 +5,7 @@ import { useSettingsLogic } from "@/features/settings/useSettingsLogic";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
-  const { language } = useSettingsLogic();
+  const { language, showDeveloper, openCryptoSelfTest } = useSettingsLogic();
 
   return (
     <ScreenContainer>
@@ -17,6 +17,12 @@ export default function SettingsScreen() {
           <SettingsRow label={t("settings.language")} value={language.toUpperCase()} />
           <RowDivider />
           <SettingsRow label={t("settings.about")} />
+          {showDeveloper ? (
+            <>
+              <RowDivider />
+              <SettingsRow label={t("settings.developer")} onPress={openCryptoSelfTest} />
+            </>
+          ) : null}
         </Card>
       </View>
     </ScreenContainer>

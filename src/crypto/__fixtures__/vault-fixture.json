@@ -1,0 +1,7 @@
+{
+  "description": "WHARFV v1 vault created by wharf-tui/internal/vault (DefaultParams t=3,m=64MiB,p=4). Proves the TS port is byte-compatible.",
+  "password": "correct horse battery staple",
+  "payloadUtf8": "{\"schema\":1,\"hosts\":[],\"settings\":{\"theme\":\"abyss\",\"agent\":true,\"keepalive\":true,\"telemetry\":false}}",
+  "recoveryCode": "YD7NX52DZN9MXFTRZHB7SR1BMRR6ZSMX1WZJ5WHT",
+  "vaultBase64": "V0hBUkZWAQABAwAAAAAAAQAEqGbHyoSqxPYVZcLDCs02P4RApgUl/EKmQ6ppqWx3X61K3RwN2MR1nf/yaneDvJAhD21oiEuOjCLhgZ04iehGG+x7Mj5Oo6hXyyI4QeTSP/JQ+kN1SIR8DnXkXS/g+IBFl+PgczQum27zkVil++GF+ogT9dXNYbzbJ1JpnVXews36z74O+1l1HVJBAQJiCOwILf/jbv/AYaEda4ffjUuqkJPd5kDC3DywqzFpdoib61V0VfjWNf7LwqzZq83JP+puHqVE/cMEhybA6mUiBsObiEKHdHIDWtJrngBri1FPvstyI0WqC2PApuljC1733W7PFjn2rg1+IV+3DTMzzJ/VWdX8zKCqjjsHUYeyzrZtgVk7Nedt2hWfnO+D1A0prOF2f8yBMCEpQ0q4Z1Bbx/xfwZiw2buhBtCR+2IKpg=="
+}

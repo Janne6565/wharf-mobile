@@ -33,6 +33,16 @@ const enCommon = {
     theme: "Theme",
     language: "Language",
     about: "About",
+    developer: "Developer",
+  },
+  cryptoSelfTest: {
+    title: "Crypto self-test",
+    backend: "Primitive backend: {{backend}}",
+    running: "Running checks…",
+    allPassed: "All checks passed.",
+    someFailed: "Some checks failed.",
+    argon2Timing: "argon2id (t=3, m=64 MiB, p=4)",
+    rerun: "Run again",
   },
 } as const;
 
@@ -71,6 +81,16 @@ const deCommon: CommonSchema = {
     theme: "Design",
     language: "Sprache",
     about: "Über",
+    developer: "Entwickler",
+  },
+  cryptoSelfTest: {
+    title: "Krypto-Selbsttest",
+    backend: "Primitiv-Backend: {{backend}}",
+    running: "Prüfungen laufen…",
+    allPassed: "Alle Prüfungen bestanden.",
+    someFailed: "Einige Prüfungen fehlgeschlagen.",
+    argon2Timing: "argon2id (t=3, m=64 MiB, p=4)",
+    rerun: "Erneut ausführen",
   },
 };
 

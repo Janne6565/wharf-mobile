@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["WharfArgon2Module"]
+  },
+  "android": {
+    "modules": ["expo.modules.wharfargon2.WharfArgon2Module"]
+  }
+}
