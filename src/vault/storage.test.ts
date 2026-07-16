@@ -1,7 +1,14 @@
 // Round-trip tests for the on-device blob store, with expo-file-system mocked
 // as an in-memory map (the real module is native-only).
 
-import { clearVaultStorage, readVaultBlob, readVaultMeta, storeVaultBlob } from "./storage";
+import {
+  clearVaultStorage,
+  readVaultBlob,
+  readVaultMeta,
+  storeVaultBlob,
+  updateVaultMeta,
+  writeVaultBlob,
+} from "./storage";
 
 const mockFiles = new Map<string, Uint8Array | string>();
 
@@ -86,5 +93,31 @@ describe("vault blob storage", () => {
     expect(await readVaultBlob()).toBeNull();
     expect(await readVaultMeta()).toBeNull();
     expect(mockFiles.size).toBe(0);
+  });
+
+  it("merges metadata fields without clobbering the others", async () => {
+    await storeVaultBlob(Uint8Array.from([1]), 4);
+    await updateVaultMeta({ userId: "u1", userEmail: "u@x.io" });
+    await updateVaultMeta({ fingerprint: "abc123" });
+
+    const meta = await readVaultMeta();
+    expect(meta).toMatchObject({
+      version: 4,
+      userId: "u1",
+      userEmail: "u@x.io",
+      fingerprint: "abc123",
+    });
+  });
+
+  it("writeVaultBlob replaces the blob without touching the version/fingerprint", async () => {
+    await storeVaultBlob(Uint8Array.from([1]), 7);
+    await updateVaultMeta({ fingerprint: "fp-at-7" });
+
+    writeVaultBlob(Uint8Array.from([2, 2]));
+
+    expect(await readVaultBlob()).toEqual(Uint8Array.from([2, 2]));
+    const meta = await readVaultMeta();
+    expect(meta?.version).toBe(7);
+    expect(meta?.fingerprint).toBe("fp-at-7");
   });
 });

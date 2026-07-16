@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/store/authSlice";
 import settingsReducer from "@/store/settingsSlice";
+import syncReducer from "@/store/syncSlice";
 import vaultReducer from "@/store/vaultSlice";
 
 // Redux Toolkit owns client/UI state (settings, derived auth session, derived
@@ -11,6 +12,7 @@ export const store = configureStore({
     settings: settingsReducer,
     auth: authReducer,
     vault: vaultReducer,
+    sync: syncReducer,
   },
 });
 

@@ -12,6 +12,7 @@ import {
   SectionLabel,
 } from "@/components";
 import { type HostSectionData, useHostsLogic } from "@/features/hosts/useHostsLogic";
+import { SyncStatusBanner } from "@/features/syncStatus/SyncStatusBanner";
 
 const SECTION_LABEL_KEY = {
   personal: "hosts.sectionPersonal",
@@ -59,14 +60,19 @@ function EmptyState({ title, body }: { readonly title: string; readonly body?: s
 
 export default function HostsScreen() {
   const { t } = useTranslation();
-  const { sections, query, setQuery, openHost, hasHosts, hasMatches } = useHostsLogic();
+  const { sections, query, setQuery, openHost, openAddHost, hasHosts, hasMatches } =
+    useHostsLogic();
 
   return (
     <ScreenContainer>
-      <ScreenTitle title={t("hosts.title")} action={<AddButton />} />
+      <ScreenTitle
+        title={t("hosts.title")}
+        action={<AddButton onPress={openAddHost} testID="hosts-add" />}
+      />
       <View className="mt-3.5">
         <SearchField placeholder={t("hosts.search")} value={query} onChangeText={setQuery} />
       </View>
+      <SyncStatusBanner />
       {!hasHosts ? (
         <EmptyState title={t("hosts.empty")} body={t("hosts.emptyBody")} />
       ) : !hasMatches ? (

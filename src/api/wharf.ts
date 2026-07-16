@@ -20,4 +20,5 @@ export const login = authApi.login;
 export const refresh = authApi.refresh;
 export const exchangeDeviceCode = deviceCodesApi.exchangeDeviceCode;
 export const getVault = vaultApi.getVault;
+export const updateVault = vaultApi.updateVault;
 export const getCurrentUser = usersApi.getCurrentUser;

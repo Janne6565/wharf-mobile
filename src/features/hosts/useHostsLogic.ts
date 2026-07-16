@@ -47,8 +47,12 @@ export function useHostsLogic() {
     [router],
   );
 
+  const openAddHost = useCallback(() => {
+    router.push("/(tabs)/hosts/edit");
+  }, [router]);
+
   const hasHosts = hosts.length > 0;
   const hasMatches = sections.some((section) => section.hosts.length > 0);
 
-  return { sections, query, setQuery, openHost, hasHosts, hasMatches };
+  return { sections, query, setQuery, openHost, openAddHost, hasHosts, hasMatches };
 }

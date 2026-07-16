@@ -20,6 +20,18 @@ export function getVaultSession(): UnlockedVault | null {
   return current;
 }
 
+// Replace the current session's decrypted payload in place (host CRUD, or an
+// adopted remote), keeping the DEK, header and params — so the biometric DEK
+// cache and re-seal slots stay valid. The old payload buffer is zeroed before
+// the reference is dropped. No-op when locked.
+export function updateVaultSessionPayload(payload: Uint8Array): void {
+  if (!current) {
+    return;
+  }
+  current.payload.fill(0);
+  current = { ...current, payload };
+}
+
 export function clearVaultSession(): void {
   if (current) {
     current.dek.fill(0);

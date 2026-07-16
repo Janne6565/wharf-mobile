@@ -13,9 +13,11 @@ import {
   sessionEstablished,
   sessionResolvedAnonymous,
 } from "@/store/authSlice";
+import { setOffline } from "@/store/syncSlice";
 import { setBiometricEnrolled, vaultLocked } from "@/store/vaultSlice";
+import { reconcileVaultAccount } from "@/sync/account";
 import { clearBiometricDek, hasBiometricDek } from "@/vault/biometric";
-import { clearVaultStorage } from "@/vault/storage";
+import { clearVaultStorage, readVaultBlob, readVaultMeta } from "@/vault/storage";
 import { clearVaultSession } from "@/vault/vaultSession";
 import { clearMasterPassword } from "./masterSecret";
 import { clearRefreshToken, getRefreshToken, setRefreshToken } from "./refreshTokenStore";
@@ -41,6 +43,10 @@ export async function establishSession(res: SessionResponse): Promise<void> {
     await setRefreshToken(res.refreshToken);
   }
   const user = await resolveUser(res);
+  // A different account signing in over a stale local blob: wipe it (and the
+  // biometric DEK) before publishing the session, so hasBiometricDek reads false
+  // and the next unlock refetches for the new account.
+  await reconcileVaultAccount(user.id);
   store.dispatch(sessionEstablished(user));
   store.dispatch(setBiometricEnrolled(await hasBiometricDek()));
 }
@@ -110,22 +116,47 @@ async function runBootstrap(): Promise<void> {
           await setRefreshToken(res.refreshToken);
         }
         const user = await resolveUser();
+        await reconcileVaultAccount(user.id);
         store.dispatch(sessionEstablished(user));
         store.dispatch(setBiometricEnrolled(await hasBiometricDek()));
         return;
       }
     }
   } catch (error) {
-    // Drop the stored token only when the server explicitly rejected it; a
-    // network failure keeps it so the next (online) launch can restore the
-    // session. Either way this launch resolves anonymous (offline cache is M3).
     const status = getHttpStatus(error);
+    // The server explicitly rejected the token (expired / revoked) → drop it and
+    // sign out.
     if (hadToken && (status === 401 || status === 403)) {
       await clearRefreshToken();
+      store.dispatch(sessionResolvedAnonymous());
+      return;
+    }
+    // Network unreachable but the refresh token still looks valid: enter OFFLINE
+    // mode against the cached vault (unlock works offline via password or the
+    // biometric DEK) instead of falsely resolving anonymous. Sync resumes when
+    // connectivity returns. The token is kept for the next online launch.
+    if (hadToken && status === undefined && (await restoreOfflineSession())) {
+      return;
     }
     store.dispatch(sessionResolvedAnonymous());
     return;
   }
   await clearRefreshToken();
   store.dispatch(sessionResolvedAnonymous());
+}
+
+// restoreOfflineSession republishes the last signed-in account from the cached
+// vault metadata + blob, so a launch with no connectivity still reaches the
+// unlock screen. Returns false (→ anonymous) when there is no cached account or
+// blob to restore. No access token is set — the first online request refreshes
+// one via the axios interceptor.
+async function restoreOfflineSession(): Promise<boolean> {
+  const [meta, blob] = await Promise.all([readVaultMeta(), readVaultBlob()]);
+  if (!meta?.userId || !meta.userEmail || !blob) {
+    return false;
+  }
+  store.dispatch(sessionEstablished({ id: meta.userId, email: meta.userEmail }));
+  store.dispatch(setBiometricEnrolled(await hasBiometricDek()));
+  store.dispatch(setOffline(true));
+  return true;
 }

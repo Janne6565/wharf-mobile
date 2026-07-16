@@ -18,6 +18,7 @@ import { clearMasterPassword, setMasterPassword } from "@/auth/masterSecret";
 import { CryptoError, fromBase64, unlockVaultWithDek, unlockWithPassword } from "@/crypto";
 import { store } from "@/store";
 import { setBiometricEnrolled, vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
+import { establishSyncBaseline } from "@/sync/deps";
 import {
   canEnrollBiometrics,
   clearBiometricDek,
@@ -61,9 +62,14 @@ export async function ensureVaultBlob(): Promise<LocalBlob | null> {
   return { blob, version };
 }
 
-function publishUnlocked(payload: Uint8Array, version: number | null): void {
+// publishUnlocked flips the derived state to unlocked and records the sync
+// baseline (fingerprint + owning account) into the vault metadata, so the sync
+// engine has a "last agreed" reference and account reconciliation an id to
+// compare — before the tabs mount and fire the first sync pass.
+async function publishUnlocked(payload: Uint8Array, version: number | null): Promise<void> {
   const document = parseVaultDocument(payload);
   store.dispatch(vaultUnlocked({ hosts: document.hosts, version }));
+  await establishSyncBaseline(payload);
 }
 
 // Password unlock. Throws CryptoError("wrong-secret") on a bad password so the
@@ -76,7 +82,7 @@ export async function unlockVaultWithPassword(password: string): Promise<UnlockO
   const unlocked = await unlockWithPassword(local.blob, password);
   setVaultSession(unlocked);
   setMasterPassword(password);
-  publishUnlocked(unlocked.payload, local.version);
+  await publishUnlocked(unlocked.payload, local.version);
   return { status: "unlocked" };
 }
 
@@ -95,7 +101,7 @@ export async function unlockVaultWithBiometrics(prompt: string): Promise<UnlockO
   try {
     const unlocked = await unlockVaultWithDek(local.blob, dek);
     setVaultSession(unlocked);
-    publishUnlocked(unlocked.payload, local.version);
+    await publishUnlocked(unlocked.payload, local.version);
     return { status: "unlocked" };
   } catch (error) {
     if (error instanceof CryptoError && error.code === "wrong-secret") {
