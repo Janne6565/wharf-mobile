@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/store/authSlice";
+import projectsReducer from "@/store/projectsSlice";
 import settingsReducer from "@/store/settingsSlice";
 import syncReducer from "@/store/syncSlice";
 import vaultReducer from "@/store/vaultSlice";
@@ -13,6 +14,7 @@ export const store = configureStore({
     auth: authReducer,
     vault: vaultReducer,
     sync: syncReducer,
+    projects: projectsReducer,
   },
 });
 

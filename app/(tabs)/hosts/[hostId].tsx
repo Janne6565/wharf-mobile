@@ -1,4 +1,4 @@
-import { ChevronLeft, Pencil } from "lucide-react-native";
+import { ChevronLeft, FolderGit2, Pencil } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { Button, Card, RowDivider, ScreenContainer } from "@/components";
@@ -16,9 +16,25 @@ function DetailRow({ label, value }: { readonly label: string; readonly value: s
 
 // Host detail (name/user/addr/port/tags) with Edit + Delete actions. The terminal
 // session slots in post-v1 without restructuring this screen.
+function ProjectBadge({ projectName }: { readonly projectName: string }) {
+  const { t } = useTranslation();
+  return (
+    <View className="mt-6 flex-row items-start gap-2 rounded-field border border-borderSoft bg-surface px-3 py-2.5">
+      <FolderGit2 size={16} color={colors.muted} />
+      <View className="flex-1">
+        <Text className="text-xs font-semibold text-fg">{t("hostDetail.projectBadge")}</Text>
+        <Text className="mt-0.5 text-xs text-muted">
+          {t("hostDetail.projectBadgeBody", { project: projectName })}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export default function HostDetailScreen() {
   const { t } = useTranslation();
-  const { host, target, goBack, openEdit, confirmDelete, isDeleting } = useHostDetailLogic();
+  const { host, target, isProjectHost, projectName, goBack, openEdit, confirmDelete, isDeleting } =
+    useHostDetailLogic();
 
   const onDelete = () =>
     confirmDelete({
@@ -27,6 +43,9 @@ export default function HostDetailScreen() {
       confirm: t("hostForm.deleteConfirm"),
       cancel: t("hostForm.deleteCancel"),
     });
+
+  // Project hosts are read-only on mobile v1: no Edit affordance, no Delete.
+  const showActions = Boolean(host) && !isProjectHost;
 
   return (
     <ScreenContainer>
@@ -39,7 +58,7 @@ export default function HostDetailScreen() {
           <ChevronLeft size={22} color={colors.accent} />
           <Text className="text-[15px] text-accent">{t("hostDetail.back")}</Text>
         </Pressable>
-        {host ? (
+        {showActions ? (
           <Pressable
             onPress={openEdit}
             accessibilityRole="button"
@@ -55,6 +74,7 @@ export default function HostDetailScreen() {
         <>
           <Text className="mt-1 font-mono-bold text-2xl text-fg">{host.name}</Text>
           <Text className="mt-1 text-[13px] text-muted">{target}</Text>
+          {isProjectHost && projectName ? <ProjectBadge projectName={projectName} /> : null}
           <View className="mt-6">
             <Card>
               <DetailRow label={t("hostDetail.user")} value={host.user} />
@@ -70,15 +90,17 @@ export default function HostDetailScreen() {
               ) : null}
             </Card>
           </View>
-          <View className="mt-6">
-            <Button
-              label={t("hostForm.delete")}
-              variant="outline"
-              onPress={onDelete}
-              loading={isDeleting}
-              testID="host-detail-delete"
-            />
-          </View>
+          {showActions ? (
+            <View className="mt-6">
+              <Button
+                label={t("hostForm.delete")}
+                variant="outline"
+                onPress={onDelete}
+                loading={isDeleting}
+                testID="host-detail-delete"
+              />
+            </View>
+          ) : null}
         </>
       ) : (
         <Text className="mt-16 text-center text-sm text-muted">{t("hostDetail.notFound")}</Text>

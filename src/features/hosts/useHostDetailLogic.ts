@@ -1,7 +1,9 @@
-// Logic for the host detail screen: resolves the route's hostId against the
-// decrypted host list, and owns the edit-navigation + delete actions. Delete runs
-// the document mutation (re-seal + scheduled push) and pops back to the list. The
-// confirmation Alert's copy is passed in from the screen (t() stays in the JSX).
+// Logic for the host detail screen. Resolves the route's hostId against either the
+// personal vault host list or — when a projectId is present — a project's decrypted
+// host list. Personal hosts own edit + delete; project hosts are READ-ONLY on
+// mobile v1 (the plan defers project host editing), so the screen shows a project
+// badge and suppresses those actions. The confirmation Alert's copy is passed in
+// from the screen (t() stays in the JSX).
 
 import { useMutation } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -19,9 +21,17 @@ export interface DeleteConfirmCopy {
 }
 
 export function useHostDetailLogic() {
-  const { hostId } = useLocalSearchParams<{ hostId: string }>();
+  const { hostId, projectId } = useLocalSearchParams<{ hostId: string; projectId?: string }>();
   const router = useRouter();
-  const host = useAppSelector((state) => state.vault.hosts.find((h) => h.id === hostId));
+
+  const personalHost = useAppSelector((state) => state.vault.hosts.find((h) => h.id === hostId));
+  const project = useAppSelector((state) =>
+    projectId ? state.projects.projects.find((p) => p.id === projectId) : undefined,
+  );
+  const projectHost = project?.hosts.find((h) => h.id === hostId);
+
+  const isProjectHost = Boolean(projectId);
+  const host = isProjectHost ? projectHost : personalHost;
 
   const goBack = useCallback(() => {
     router.back();
@@ -51,6 +61,8 @@ export function useHostDetailLogic() {
   return {
     host,
     target: host ? hostTarget(host) : "",
+    isProjectHost,
+    projectName: project?.name,
     goBack,
     openEdit,
     confirmDelete,

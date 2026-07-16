@@ -14,24 +14,21 @@ import {
 import { type HostSectionData, useHostsLogic } from "@/features/hosts/useHostsLogic";
 import { SyncStatusBanner } from "@/features/syncStatus/SyncStatusBanner";
 
-const SECTION_LABEL_KEY = {
-  personal: "hosts.sectionPersonal",
-} as const;
-
 function HostSection({
   section,
   onOpenHost,
 }: {
   readonly section: HostSectionData;
-  readonly onOpenHost: (hostId: string) => void;
+  readonly onOpenHost: (hostId: string, projectId?: string) => void;
 }) {
   const { t } = useTranslation();
   if (section.hosts.length === 0) {
     return null;
   }
+  const label = section.kind === "personal" ? t("hosts.sectionPersonal") : (section.name ?? "");
   return (
     <View className="mt-5">
-      <SectionLabel>{t(SECTION_LABEL_KEY[section.kind])}</SectionLabel>
+      <SectionLabel>{label}</SectionLabel>
       <Card>
         {section.hosts.map((host, index) => (
           <Fragment key={host.id}>
@@ -40,7 +37,7 @@ function HostSection({
               name={host.name}
               target={host.target}
               status={host.status}
-              onPress={() => onOpenHost(host.id)}
+              onPress={() => onOpenHost(host.id, host.projectId)}
             />
           </Fragment>
         ))}
@@ -79,7 +76,7 @@ export default function HostsScreen() {
         <EmptyState title={t("hosts.noMatches")} />
       ) : (
         sections.map((section) => (
-          <HostSection key={section.kind} section={section} onOpenHost={openHost} />
+          <HostSection key={section.key} section={section} onOpenHost={openHost} />
         ))
       )}
     </ScreenContainer>

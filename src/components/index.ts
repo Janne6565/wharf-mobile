@@ -1,8 +1,10 @@
 export { AddButton } from "./AddButton";
+export { Avatar } from "./Avatar";
 export { Button } from "./Button";
 export { Card, RowDivider } from "./Card";
 export { FormField } from "./FormField";
 export { HostRow } from "./HostRow";
+export { RoleChip } from "./RoleChip";
 export { ScreenContainer } from "./ScreenContainer";
 export { ScreenTitle } from "./ScreenTitle";
 export { SearchField } from "./SearchField";

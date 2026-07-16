@@ -18,15 +18,37 @@ export function filterHosts(hosts: readonly VaultHost[], query: string): readonl
   });
 }
 
-export interface HostSection {
-  // i18n key discriminator — "personal" is the only section until projects (M4).
-  readonly kind: "personal";
+// A project's hosts, ready to be grouped into its own Hosts-tab section.
+export interface ProjectHostGroup {
+  readonly id: string;
+  readonly name: string;
   readonly hosts: readonly VaultHost[];
 }
 
-// Group hosts into display sections. Personal-only for now: project grouping
-// (mock's ATLAS PLATFORM section) arrives with the projects milestone; the
-// shape is already section-based so M4 only adds section kinds.
-export function groupHosts(hosts: readonly VaultHost[]): readonly HostSection[] {
-  return [{ kind: "personal", hosts }];
+// A Hosts-tab display section: one per project (labelled by the project name) plus
+// a trailing personal section (labelled "PERSONAL" via i18n in the screen).
+export type HostSection =
+  | { readonly kind: "personal"; readonly hosts: readonly VaultHost[] }
+  | {
+      readonly kind: "project";
+      readonly projectId: string;
+      readonly name: string;
+      readonly hosts: readonly VaultHost[];
+    };
+
+// Group hosts into display sections: project sections first, then personal —
+// matching the mock (ATLAS PLATFORM before PERSONAL). Project host lists are
+// read-only; the screen renders their sections identically but the host detail
+// suppresses edit/delete.
+export function groupHosts(
+  personal: readonly VaultHost[],
+  projects: readonly ProjectHostGroup[],
+): readonly HostSection[] {
+  const projectSections: HostSection[] = projects.map((project) => ({
+    kind: "project",
+    projectId: project.id,
+    name: project.name,
+    hosts: project.hosts,
+  }));
+  return [...projectSections, { kind: "personal", hosts: personal }];
 }

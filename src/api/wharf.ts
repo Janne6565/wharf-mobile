@@ -8,11 +8,13 @@
 
 import { getAuthentication } from "@/api/generated/authentication/authentication";
 import { getDeviceCodes } from "@/api/generated/device-codes/device-codes";
+import { getProjects } from "@/api/generated/projects/projects";
 import { getUsers } from "@/api/generated/users/users";
 import { getVault as getVaultGroup } from "@/api/generated/vault/vault";
 
 const authApi = getAuthentication();
 const deviceCodesApi = getDeviceCodes();
+const projectsApi = getProjects();
 const usersApi = getUsers();
 const vaultApi = getVaultGroup();
 
@@ -22,3 +24,15 @@ export const exchangeDeviceCode = deviceCodesApi.exchangeDeviceCode;
 export const getVault = vaultApi.getVault;
 export const updateVault = vaultApi.updateVault;
 export const getCurrentUser = usersApi.getCurrentUser;
+
+// Projects + identity (M4). Mobile v1 is member-plus and READ-ONLY for project
+// vaults, so the mutating project endpoints (updateProjectVault, rotateProject,
+// createInvite, …) are deliberately not surfaced here — they land with the light
+// admin milestone (M5).
+export const listProjects = projectsApi.listProjects;
+export const getProjectVault = projectsApi.getProjectVault;
+export const getProject = projectsApi.getProject;
+export const updatePublicKey = usersApi.updatePublicKey;
+export const getMyInvites = usersApi.getMyInvites;
+export const acceptInvite = usersApi.acceptInvite;
+export const declineInvite = usersApi.declineInvite;

@@ -3,14 +3,21 @@
 
 import {
   clearVaultStorage,
+  deleteProjectBlob,
+  deleteProjectMeta,
+  readProjectBlob,
+  readProjectMeta,
   readVaultBlob,
   readVaultMeta,
   storeVaultBlob,
   updateVaultMeta,
+  upsertProjectMeta,
+  writeProjectBlob,
   writeVaultBlob,
 } from "./storage";
 
 const mockFiles = new Map<string, Uint8Array | string>();
+const mockDirs = new Set<string>();
 
 jest.mock("expo-file-system", () => {
   class MockFile {
@@ -49,12 +56,39 @@ jest.mock("expo-file-system", () => {
     }
   }
 
-  return { File: MockFile, Paths: { document: "document" } };
+  class MockDirectory {
+    private readonly key: string;
+
+    constructor(...parts: unknown[]) {
+      this.key = parts.map((p) => String(p)).join("/");
+    }
+
+    get exists(): boolean {
+      return mockDirs.has(this.key);
+    }
+
+    create(): void {
+      mockDirs.add(this.key);
+    }
+
+    delete(): void {
+      mockDirs.delete(this.key);
+      const prefix = `${this.key}/`;
+      for (const fileKey of [...mockFiles.keys()]) {
+        if (fileKey.startsWith(prefix)) {
+          mockFiles.delete(fileKey);
+        }
+      }
+    }
+  }
+
+  return { File: MockFile, Directory: MockDirectory, Paths: { document: "document" } };
 });
 
 describe("vault blob storage", () => {
   beforeEach(() => {
     mockFiles.clear();
+    mockDirs.clear();
   });
 
   it("returns null blob and meta before anything is stored", async () => {
@@ -119,5 +153,64 @@ describe("vault blob storage", () => {
     const meta = await readVaultMeta();
     expect(meta?.version).toBe(7);
     expect(meta?.fingerprint).toBe("fp-at-7");
+  });
+});
+
+describe("project sync bookkeeping", () => {
+  const entry = (over: Partial<Record<string, unknown>> = {}) => ({
+    name: "Atlas Platform",
+    role: "MEMBER",
+    version: 3,
+    fingerprint: "fp",
+    wrappedDek: "d2Q=",
+    ...over,
+  });
+
+  beforeEach(() => {
+    mockFiles.clear();
+    mockDirs.clear();
+  });
+
+  it("returns an empty map before any project is recorded", async () => {
+    expect(await readProjectMeta()).toEqual({});
+  });
+
+  it("round-trips a project entry and preserves the top-level version", async () => {
+    await storeVaultBlob(Uint8Array.from([1]), 9);
+    await upsertProjectMeta("proj-a", entry());
+
+    expect(await readProjectMeta()).toEqual({ "proj-a": entry() });
+    // The project map lives alongside — the personal version is untouched.
+    expect((await readVaultMeta())?.version).toBe(9);
+  });
+
+  it("upserts and deletes without clobbering sibling projects", async () => {
+    await upsertProjectMeta("proj-a", entry({ name: "A" }));
+    await upsertProjectMeta("proj-b", entry({ name: "B" }));
+    await deleteProjectMeta("proj-a");
+
+    const meta = await readProjectMeta();
+    expect(Object.keys(meta)).toEqual(["proj-b"]);
+    expect(meta["proj-b"].name).toBe("B");
+  });
+
+  it("round-trips a cached project blob and deletes it", async () => {
+    const blob = Uint8Array.from([7, 8, 9]);
+    writeProjectBlob("proj-a", blob);
+    expect(await readProjectBlob("proj-a")).toEqual(blob);
+
+    deleteProjectBlob("proj-a");
+    expect(await readProjectBlob("proj-a")).toBeNull();
+  });
+
+  it("clearVaultStorage removes cached project blobs too", async () => {
+    await storeVaultBlob(Uint8Array.from([1]), 1);
+    await upsertProjectMeta("proj-a", entry());
+    writeProjectBlob("proj-a", Uint8Array.from([1, 2]));
+
+    await clearVaultStorage();
+
+    expect(await readProjectBlob("proj-a")).toBeNull();
+    expect(await readProjectMeta()).toEqual({});
   });
 });

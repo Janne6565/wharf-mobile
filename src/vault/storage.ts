@@ -17,10 +17,12 @@
 // module so tests can mock `expo-file-system` wholesale and the rest of the app
 // never touches file URIs.
 
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 
 const BLOB_FILENAME = "vault.blob";
 const META_FILENAME = "vault.meta.json";
+const PROJECTS_DIRNAME = "projects";
+const PROJECT_BLOB_SUFFIX = ".blob";
 
 export interface VaultMeta {
   // The server-side vault version the local state is in agreement with — i.e.
@@ -38,6 +40,23 @@ export interface VaultMeta {
   // SHA-256 hex of the payload JSON at `version` — the sync engine's baseline
   // for "did the local vault change since we last agreed with the server?".
   readonly fingerprint?: string;
+  // Per-project sync bookkeeping (M4), keyed by project id. Non-secret: the
+  // wrapped DEK is a sealed-box ciphertext only the owner's X25519 private key
+  // (which never leaves the encrypted personal payload) can open, so persisting
+  // it in plaintext reveals nothing. The matching ciphertext blob lives beside
+  // this file under projects/<id>.blob for offline opens.
+  readonly projects?: Record<string, ProjectMetaEntry>;
+}
+
+// The per-project analogue of version/fingerprint, plus the caller's current
+// wrapped DEK (base64) so a cached blob can be re-opened offline, and the
+// display name/role so the projects list renders before a network sync.
+export interface ProjectMetaEntry {
+  readonly name: string;
+  readonly role: string;
+  readonly version: number;
+  readonly fingerprint: string;
+  readonly wrappedDek: string;
 }
 
 function blobFile(): File {
@@ -103,17 +122,82 @@ export async function readVaultMeta(): Promise<VaultMeta | null> {
       ...(typeof parsed.userId === "string" ? { userId: parsed.userId } : {}),
       ...(typeof parsed.userEmail === "string" ? { userEmail: parsed.userEmail } : {}),
       ...(typeof parsed.fingerprint === "string" ? { fingerprint: parsed.fingerprint } : {}),
+      ...(parsed.projects && typeof parsed.projects === "object"
+        ? { projects: parsed.projects }
+        : {}),
     };
   } catch {
     return null;
   }
 }
 
-// Remove the local blob + metadata (sign-out, or account reconciliation wipe).
+// --- Per-project sync bookkeeping (M4) -----------------------------------------
+
+function projectsDirectory(): Directory {
+  return new Directory(Paths.document, PROJECTS_DIRNAME);
+}
+
+function projectBlobFile(id: string): File {
+  return new File(Paths.document, PROJECTS_DIRNAME, `${id}${PROJECT_BLOB_SUFFIX}`);
+}
+
+// Read the whole project bookkeeping map (empty when none recorded yet).
+export async function readProjectMeta(): Promise<Record<string, ProjectMetaEntry>> {
+  return (await readVaultMeta())?.projects ?? {};
+}
+
+// Insert or replace a single project's bookkeeping entry, preserving the others.
+export async function upsertProjectMeta(id: string, entry: ProjectMetaEntry): Promise<void> {
+  const projects = { ...(await readProjectMeta()), [id]: entry };
+  await updateVaultMeta({ projects });
+}
+
+// Forget a project's bookkeeping entry (membership vanished / not-found).
+export async function deleteProjectMeta(id: string): Promise<void> {
+  const projects = { ...(await readProjectMeta()) };
+  if (!(id in projects)) {
+    return;
+  }
+  delete projects[id];
+  await updateVaultMeta({ projects });
+}
+
+// Persist a project's opaque ciphertext blob for offline opens (best-effort).
+export function writeProjectBlob(id: string, blob: Uint8Array): void {
+  const dir = projectsDirectory();
+  if (!dir.exists) {
+    dir.create({ intermediates: true });
+  }
+  projectBlobFile(id).write(blob);
+}
+
+// Read a cached project blob, or null when none is stored.
+export async function readProjectBlob(id: string): Promise<Uint8Array | null> {
+  const file = projectBlobFile(id);
+  if (!file.exists) {
+    return null;
+  }
+  return file.bytes();
+}
+
+// Remove a cached project blob (best-effort).
+export function deleteProjectBlob(id: string): void {
+  const file = projectBlobFile(id);
+  if (file.exists) {
+    file.delete();
+  }
+}
+
+// Remove the local blob + metadata, including every cached project blob
+// (sign-out, or account reconciliation wipe).
 export async function clearVaultStorage(): Promise<void> {
   for (const file of [blobFile(), metaFile()]) {
     if (file.exists) {
       file.delete();
     }
+  }
+  const projects = projectsDirectory();
+  if (projects.exists) {
+    projects.delete();
   }
 }

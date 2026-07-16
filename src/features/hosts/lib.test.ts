@@ -37,10 +37,29 @@ describe("filterHosts", () => {
 });
 
 describe("groupHosts", () => {
-  it("puts every host in the single PERSONAL section (project grouping is M4)", () => {
-    const sections = groupHosts(HOSTS);
+  const PROJECT_HOSTS: readonly VaultHost[] = [
+    { id: "p1", name: "prod-web-01", user: "deploy", addr: "10.0.4.12", port: 22 },
+  ];
+
+  it("returns a single PERSONAL section when there are no projects", () => {
+    const sections = groupHosts(HOSTS, []);
     expect(sections).toHaveLength(1);
     expect(sections[0].kind).toBe("personal");
     expect(sections[0].hosts).toEqual(HOSTS);
+  });
+
+  it("orders project sections before PERSONAL (mock: ATLAS PLATFORM before PERSONAL)", () => {
+    const sections = groupHosts(HOSTS, [
+      { id: "atlas", name: "Atlas Platform", hosts: PROJECT_HOSTS },
+    ]);
+    expect(sections).toHaveLength(2);
+    expect(sections[0].kind).toBe("project");
+    if (sections[0].kind === "project") {
+      expect(sections[0].name).toBe("Atlas Platform");
+      expect(sections[0].projectId).toBe("atlas");
+      expect(sections[0].hosts).toEqual(PROJECT_HOSTS);
+    }
+    expect(sections[1].kind).toBe("personal");
+    expect(sections[1].hosts).toEqual(HOSTS);
   });
 });

@@ -12,6 +12,16 @@ export {
 } from "./engine";
 export { countHosts, fingerprint } from "./fingerprint";
 export { PersonalSyncEngine } from "./personal";
+export { ProjectSyncEngine } from "./projects";
+export { runProjectsSync } from "./projectsEngine";
+export type {
+  InviteView,
+  ProjectRoleName,
+  ProjectSyncDeps,
+  ProjectsOutcome,
+  ProjectView,
+  RemoteProjectVault,
+} from "./projectTypes";
 export type {
   Conflict,
   PersonalOutcome,
