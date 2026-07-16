@@ -16,6 +16,11 @@ const config = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: "de.jannekeipert.wharf",
+    // Declares the app uses only exempt/standard encryption (answered at the EAS
+    // prompt) so App Store Connect skips the annual self-classification report.
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
     package: "de.jannekeipert.wharf",
@@ -54,6 +59,15 @@ const config = {
   ],
   experiments: {
     typedRoutes: true,
+  },
+  // EAS Update (expo-updates): OTA JS delivery, keyed to this EAS project. The
+  // runtime version follows the app version, so a native change (new appVersion)
+  // starts a fresh update lineage.
+  updates: {
+    url: "https://u.expo.dev/47bc9fd7-7935-4077-b3e2-e4f66441751f",
+  },
+  runtimeVersion: {
+    policy: "appVersion",
   },
   owner: "janne6565",
   extra: {
