@@ -7,7 +7,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { acceptInvite as apiAccept, declineInvite as apiDecline } from "@/api/wharf";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { showToast } from "@/store/toastSlice";
 import { runProjectsSync } from "@/sync/projectsEngine";
 
 interface RespondVars {
@@ -17,6 +18,7 @@ interface RespondVars {
 
 export function useProjectsLogic() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const projects = useAppSelector((state) => state.projects.projects);
   const invites = useAppSelector((state) => state.projects.invites);
   const phase = useAppSelector((state) => state.projects.phase);
@@ -45,6 +47,13 @@ export function useProjectsLogic() {
     onSettled: () => {
       void runProjectsSync();
     },
+    onError: (_error, { accept }) =>
+      dispatch(
+        showToast({
+          messageKey: accept ? "toast.acceptFailed" : "toast.declineFailed",
+          kind: "error",
+        }),
+      ),
   });
 
   const acceptInvite = useCallback(

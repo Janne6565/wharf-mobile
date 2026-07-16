@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Default accent (teal #57D7C2 = rgb 87 215 194). AccentProvider overrides this
+   variable at runtime from the persisted setting; this is the fallback for any
+   subtree rendered outside the provider (e.g. under test). */
+:root {
+  --color-accent: 87 215 194;
+}

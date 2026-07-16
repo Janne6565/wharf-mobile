@@ -6,21 +6,24 @@ import {
 } from "@expo-google-fonts/jetbrains-mono";
 import { useEffect, useState } from "react";
 import { loadPersistedLanguage } from "@/i18n/config";
+import { loadPersistedAccent } from "@/theme/accentStorage";
 
 // Gates the splash screen: the app is "ready" once the JetBrains Mono weights are
-// loaded and the persisted language has been hydrated. The root layout hides the
-// native splash on the returned flag.
+// loaded and the persisted settings (language + accent) have been hydrated. The
+// root layout hides the native splash on the returned flag.
 export function useAppReady(): boolean {
   const [fontsLoaded] = useFonts({
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
   });
-  const [languageLoaded, setLanguageLoaded] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
-    void loadPersistedLanguage().finally(() => setLanguageLoaded(true));
+    void Promise.all([loadPersistedLanguage(), loadPersistedAccent()]).finally(() =>
+      setSettingsLoaded(true),
+    );
   }, []);
 
-  return fontsLoaded && languageLoaded;
+  return fontsLoaded && settingsLoaded;
 }

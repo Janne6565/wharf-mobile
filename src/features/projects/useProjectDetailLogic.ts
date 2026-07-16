@@ -11,7 +11,8 @@ import { useCallback, useState } from "react";
 import { Alert } from "react-native";
 import { getHttpStatus } from "@/api/httpError";
 import { createInvite, getProject, revokeInvite } from "@/api/wharf";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { showToast } from "@/store/toastSlice";
 import { runProjectsSync } from "@/sync/projectsEngine";
 import { canAdminister } from "./lib";
 
@@ -33,10 +34,12 @@ export function useProjectDetailLogic() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const router = useRouter();
   const qc = useQueryClient();
+  const dispatch = useAppDispatch();
   const project = useAppSelector((state) =>
     state.projects.projects.find((p) => p.id === projectId),
   );
   const currentUserId = useAppSelector((state) => state.auth.user?.id);
+  const projectsLoaded = useAppSelector((state) => state.projects.loaded);
 
   const detailKey = ["project", projectId] as const;
   const detailQuery = useQuery({
@@ -58,7 +61,9 @@ export function useProjectDetailLogic() {
 
   const inviteMutation = useMutation({
     mutationFn: (email: string) => createInvite(projectId ?? "", { email }),
-    onSuccess: () => {
+    onSuccess: (_data, email) => {
+      // Confirm the invite went out — the M5 sheet closed silently before.
+      dispatch(showToast({ messageKey: "toast.inviteSent", params: { email }, kind: "success" }));
       refresh();
       // Re-fire the projects sync so the finalize pass runs again: a member who
       // accepted an earlier invite may already be pending a key.
@@ -75,7 +80,13 @@ export function useProjectDetailLogic() {
 
   const revokeMutation = useMutation({
     mutationFn: (inviteId: string) => revokeInvite(projectId ?? "", inviteId),
-    onSuccess: () => refresh(),
+    onSuccess: () => {
+      dispatch(showToast({ messageKey: "toast.inviteRevoked", kind: "success" }));
+      refresh();
+    },
+    // The M5 revoke swallowed failures — surface them so a failed revoke is
+    // not mistaken for success.
+    onError: () => dispatch(showToast({ messageKey: "toast.revokeFailed", kind: "error" })),
   });
 
   const openInvite = useCallback(() => setInviteOpen(true), []);
@@ -113,6 +124,7 @@ export function useProjectDetailLogic() {
     currentUserId,
     canAdmin,
     loadingDetail: detailQuery.isLoading,
+    projectsLoaded,
     goBack,
     openHost,
     // Invite sheet + mutation.

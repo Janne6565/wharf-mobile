@@ -8,6 +8,7 @@ import { InviteSheet } from "@/features/projects/InviteSheet";
 import { MemberRow } from "@/features/projects/MemberRow";
 import { useProjectDetailLogic } from "@/features/projects/useProjectDetailLogic";
 import { colors } from "@/theme/colors";
+import { useAccentColor } from "@/theme/useAccentColor";
 import { hostTarget } from "@/vault/document";
 
 interface PendingInviteLineProps {
@@ -60,6 +61,7 @@ function RevokeButton({
 
 function InviteMemberRow({ onPress }: { readonly onPress: () => void }) {
   const { t } = useTranslation();
+  const accent = useAccentColor();
   return (
     <Pressable
       onPress={onPress}
@@ -67,9 +69,32 @@ function InviteMemberRow({ onPress }: { readonly onPress: () => void }) {
       className="flex-row items-center gap-2 px-4 py-3"
       testID="invite-member-row"
     >
-      <Plus size={16} color={colors.accent} />
+      <Plus size={16} color={accent} />
       <Text className="text-[15px] text-accent">{t("projectDetail.inviteAction")}</Text>
     </Pressable>
+  );
+}
+
+// A shimmer-free placeholder shown while the members/invites detail loads (the
+// summary list is already on screen from the synced state). Three muted bars
+// stand in for member rows so the card does not pop in empty.
+function MembersSkeleton() {
+  return (
+    <View className="mt-6" testID="project-detail-skeleton">
+      <SectionLabel> </SectionLabel>
+      <Card>
+        {[0, 1, 2].map((row) => (
+          <Fragment key={row}>
+            {row > 0 ? <RowDivider /> : null}
+            <View className="flex-row items-center gap-3 px-4 py-3.5">
+              <View className="h-7 w-7 rounded-full bg-surface" />
+              <View className="h-3.5 flex-1 rounded-full bg-surface" />
+              <View className="h-3.5 w-12 rounded-full bg-surface" />
+            </View>
+          </Fragment>
+        ))}
+      </Card>
+    </View>
   );
 }
 
@@ -78,6 +103,7 @@ function InviteMemberRow({ onPress }: { readonly onPress: () => void }) {
 // with a revoke action (admin/owner), and a read-only hosts card.
 export default function ProjectDetailScreen() {
   const { t } = useTranslation();
+  const accent = useAccentColor();
   const {
     project,
     hosts,
@@ -85,6 +111,8 @@ export default function ProjectDetailScreen() {
     invites,
     currentUserId,
     canAdmin,
+    loadingDetail,
+    projectsLoaded,
     goBack,
     openHost,
     inviteOpen,
@@ -118,7 +146,7 @@ export default function ProjectDetailScreen() {
         accessibilityRole="button"
         className="-ml-1 flex-row items-center py-2"
       >
-        <ChevronLeft size={22} color={colors.accent} />
+        <ChevronLeft size={22} color={accent} />
         <Text className="text-[15px] text-accent">{t("projectDetail.back")}</Text>
       </Pressable>
 
@@ -127,6 +155,7 @@ export default function ProjectDetailScreen() {
           <Text className="mt-1 text-[26px] font-bold text-fg">{project.name}</Text>
           <Text className="mt-0.5 text-[13px] text-muted">{summary}</Text>
 
+          {loadingDetail && members.length === 0 && !canAdmin ? <MembersSkeleton /> : null}
           {members.length > 0 || canAdmin ? (
             <View className="mt-6">
               <SectionLabel>{t("projectDetail.members")}</SectionLabel>
@@ -189,6 +218,8 @@ export default function ProjectDetailScreen() {
             />
           ) : null}
         </>
+      ) : !projectsLoaded || loadingDetail ? (
+        <MembersSkeleton />
       ) : (
         <Text className="mt-16 text-center text-sm text-muted">{t("projectDetail.notFound")}</Text>
       )}

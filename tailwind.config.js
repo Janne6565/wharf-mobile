@@ -24,7 +24,11 @@ module.exports = {
         muted: "#54646F", // labels, sublabels, inactive tabs
         dim: "#8B99A5", // slightly brighter muted (email button label)
         faint: "#3A4754", // chevrons, lowest-contrast marks
-        accent: "#57D7C2", // brand teal (default theme)
+        // Accent is the one runtime-switchable token: it resolves through a
+        // NativeWind CSS variable so the Settings accent picker recolours every
+        // `text-accent`/`bg-accent` at once. Default (teal #57D7C2) lives in
+        // global.css `:root`; AccentProvider overrides it from the store.
+        accent: "rgb(var(--color-accent) / <alpha-value>)", // brand teal (default theme)
         accentBlue: "#6FB3E8", // theme option
         accentPurple: "#C983E8", // theme option
         accentAmber: "#FFC86B", // theme option

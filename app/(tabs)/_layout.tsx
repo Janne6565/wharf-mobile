@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { SyncConflictSheet } from "@/features/syncConflict";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { colors } from "@/theme/colors";
+import { useAccentColor } from "@/theme/useAccentColor";
 
 // The 4-tab bar from the mock: accent-tinted active state on the dark shell.
 // The tabs render only while the vault is unlocked, so this is also where the
@@ -12,6 +13,7 @@ import { colors } from "@/theme/colors";
 // conflict sheet overlays whichever tab is active.
 export default function TabsLayout() {
   const { t } = useTranslation();
+  const accent = useAccentColor();
   useSyncEngine();
 
   return (
@@ -19,7 +21,7 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.accent,
+          tabBarActiveTintColor: accent,
           tabBarInactiveTintColor: colors.muted,
           tabBarStyle: {
             backgroundColor: colors.shellRaised,

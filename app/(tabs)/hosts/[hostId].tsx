@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { Button, Card, RowDivider, ScreenContainer } from "@/components";
 import { useHostDetailLogic } from "@/features/hosts/useHostDetailLogic";
 import { colors } from "@/theme/colors";
+import { useAccentColor } from "@/theme/useAccentColor";
 
 function DetailRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
@@ -33,6 +34,7 @@ function ProjectBadge({ projectName }: { readonly projectName: string }) {
 
 export default function HostDetailScreen() {
   const { t } = useTranslation();
+  const accent = useAccentColor();
   const { host, target, isProjectHost, projectName, goBack, openEdit, confirmDelete, isDeleting } =
     useHostDetailLogic();
 
@@ -55,7 +57,7 @@ export default function HostDetailScreen() {
           accessibilityRole="button"
           className="-ml-1 flex-row items-center py-2"
         >
-          <ChevronLeft size={22} color={colors.accent} />
+          <ChevronLeft size={22} color={accent} />
           <Text className="text-[15px] text-accent">{t("hostDetail.back")}</Text>
         </Pressable>
         {showActions ? (
@@ -65,7 +67,7 @@ export default function HostDetailScreen() {
             testID="host-detail-edit"
             className="flex-row items-center gap-1.5 py-2"
           >
-            <Pencil size={16} color={colors.accent} />
+            <Pencil size={16} color={accent} />
             <Text className="text-[15px] text-accent">{t("hostDetail.edit")}</Text>
           </Pressable>
         ) : null}

@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
 import { queryClient } from "@/query/queryClient";
 import { store } from "@/store";
+import { AccentProvider } from "@/theme/AccentProvider";
 
 const METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -15,7 +16,9 @@ function Wrapper({ children }: { readonly children: ReactNode }) {
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider initialMetrics={METRICS}>{children}</SafeAreaProvider>
+        <SafeAreaProvider initialMetrics={METRICS}>
+          <AccentProvider>{children}</AccentProvider>
+        </SafeAreaProvider>
       </QueryClientProvider>
     </Provider>
   );

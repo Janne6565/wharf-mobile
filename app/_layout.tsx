@@ -12,11 +12,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
 import { bootstrapSession } from "@/auth/session";
+import { ToastHost } from "@/features/toast/ToastHost";
 import { useAppReady } from "@/hooks/useAppReady";
 import { useLockOnBackground } from "@/hooks/useLockOnBackground";
 import { queryClient } from "@/query/queryClient";
 import { store } from "@/store";
 import { useAppSelector } from "@/store/hooks";
+import { AccentProvider } from "@/theme/AccentProvider";
 import { colors } from "@/theme/colors";
 
 // Keep the native splash up until fonts, language AND the session bootstrap
@@ -84,7 +86,10 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <SafeAreaProvider>
             <StatusBar style="light" />
-            <RootNavigator />
+            <AccentProvider>
+              <RootNavigator />
+              <ToastHost />
+            </AccentProvider>
           </SafeAreaProvider>
         </QueryClientProvider>
       </Provider>

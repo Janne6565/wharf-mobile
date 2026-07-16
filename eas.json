@@ -1,24 +1,53 @@
 {
+  // EAS Build + Submit config. `appVersionSource: remote` lets EAS own the
+  // build/version numbers so `production.autoIncrement` bumps the iOS build
+  // number / Android versionCode server-side on every store build.
   "cli": {
     "version": ">= 12.0.0",
     "appVersionSource": "remote"
   },
   "build": {
+    // Dev-client build for day-to-day work on a device/simulator. Internal
+    // distribution installs directly (no store); the `development` channel keeps
+    // its OTA updates separate.
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development"
     },
+    // Release-configured binary, still installed via an internal link (ad-hoc /
+    // shareable) for pre-store QA.
     "preview": {
       "distribution": "internal",
       "channel": "preview"
     },
+    // Store build: signed for TestFlight / Play, build number auto-incremented.
     "production": {
       "channel": "production",
       "autoIncrement": true
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        // Apple ID email of an account with access to App Store Connect.
+        "appleId": "APPLE_ID_EMAIL_PLACEHOLDER",
+        // App Store Connect app's numeric Apple ID (App Information → General →
+        // "Apple ID"). Create the app record once at appstoreconnect.apple.com.
+        "ascAppId": "ASC_APP_ID_PLACEHOLDER",
+        // Apple Developer team ID (Membership details, e.g. "AB12CD34EF").
+        "appleTeamId": "APPLE_TEAM_ID_PLACEHOLDER"
+      },
+      "android": {
+        // Path to a Google Play service-account JSON key with the "Release
+        // manager" role. Create it in Play Console → Setup → API access → create
+        // a service account in Google Cloud, grant it Play access, download the
+        // JSON, and keep it OUT of git (store it locally or as an EAS secret).
+        "serviceAccountKeyPath": "PATH_TO_PLAY_SERVICE_ACCOUNT_JSON_PLACEHOLDER",
+        // First submission must be "internal" (Play internal testing track); the
+        // app has to exist in the Play Console before EAS can submit to it.
+        "track": "internal"
+      }
+    }
   }
 }

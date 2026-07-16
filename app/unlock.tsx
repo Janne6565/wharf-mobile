@@ -4,10 +4,11 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { UnlockPasswordForm } from "@/features/unlock/UnlockPasswordForm";
 import { useUnlockLogic } from "@/features/unlock/useUnlockLogic";
-import { colors } from "@/theme/colors";
+import { useAccentColor } from "@/theme/useAccentColor";
 
 export default function UnlockScreen() {
   const { t } = useTranslation();
+  const accent = useAccentColor();
   const logic = useUnlockLogic();
 
   return (
@@ -28,7 +29,7 @@ export default function UnlockScreen() {
                 accessibilityRole="button"
                 className="flex-row items-center justify-center gap-2 py-2"
               >
-                <Fingerprint size={18} color={colors.accent} />
+                <Fingerprint size={18} color={accent} />
                 <Text className="text-sm font-semibold text-accent">
                   {t("unlock.biometricButton")}
                 </Text>

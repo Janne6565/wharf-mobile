@@ -5,8 +5,10 @@ SSH fleet in one pocket. A **direct-token client** (like the wharf-tui) that reu
 wharf-web TypeScript crypto layer with native primitives, so private keys never leave
 the device. See [`docs/PLAN.md`](docs/PLAN.md) for the full plan.
 
-> **Status: M0 (scaffold + shell).** Tab shell, theme, i18n, state, and API layer are
-> in place. Crypto, auth, and vault sync land in M1+.
+> **Status: M6 (polish + release).** Auth, crypto, vault sync, projects, and the light
+> admin flows are in place; M6 adds the full Settings + Keys screens, shared toasts,
+> the brand app icon/splash, and the EAS release config. The SSH terminal is post-v1
+> (M7). See [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Stack
 
@@ -51,6 +53,7 @@ EAS development build).
 | `bun run lint` / `lint:fix` | Biome check / autofix |
 | `bun run test` | Jest (jest-expo + RN Testing Library) |
 | `bun run gen:api` | regenerate the Orval client from `openapi.json` |
+| `bun run gen:icons` | regenerate the app icon + splash from the brand mark |
 
 ## API generation
 
@@ -58,9 +61,72 @@ EAS development build).
 from `../wharf-backend/openapi.json` and run `bun run gen:api`; the output under
 `src/api/generated/` is a committed build artefact — never hand-edit it.
 
-## What's next (M1)
+## Brand assets
 
-The crypto spike ports the wharf-web crypto layer verbatim above a swapped
-`primitives.ts` (react-native-libsodium + native argon2 + @noble/hashes), proven by the
-same Go-generated fixtures (`vault-fixture.json`, `project-fixture.json`) run both under
-Jest (Node primitives) and on-device via a self-test screen. See `docs/PLAN.md` §C.
+The app icon, Android adaptive icon (foreground + monochrome), splash mark, and web
+favicon are all derived from the Wharf `❯_` brand mark by `bun run gen:icons`, which
+writes the source SVGs to `assets/brand/` and rasterises the PNGs into
+`assets/images/` (via `sharp`). Edit the geometry in `scripts/generate-icons.mjs` and
+re-run — never hand-edit the generated PNGs. `app.config.ts` points at those PNG paths.
+
+## Building & releasing (EAS)
+
+Builds go through **EAS Build**; releases through **EAS Submit** to **TestFlight**
+(iOS) and the **Play internal testing** track (Android). One-time setup:
+
+```sh
+bun add -g eas-cli        # or use `bunx eas-cli@latest`
+eas login                 # log in to the Expo account (owner: janne6565)
+```
+
+The EAS project is already linked (`app.config.ts` → `extra.eas.projectId`), so no
+`eas init` is needed.
+
+### First builds (per profile in `eas.json`)
+
+```sh
+# Dev-client build to develop on a device (internal distribution):
+eas build --platform ios     --profile development
+eas build --platform android --profile development
+
+# Release-configured QA build, still installed via an internal link:
+eas build --platform ios     --profile preview
+eas build --platform android --profile preview
+
+# Store build (TestFlight / Play internal); build number auto-increments:
+eas build --platform ios     --profile production
+eas build --platform android --profile production
+```
+
+> **First run is interactive.** The very first iOS build prompts you to sign in to
+> Apple and lets EAS generate/manage the Distribution certificate + provisioning
+> profile; the first Android build generates and stores the upload keystore. Those
+> credentials are saved on EAS and reused on later builds — subsequent builds are
+> non-interactive. (This step needs *your* Apple / Google credentials and cannot be
+> run headless.)
+
+### Submitting
+
+Fill the placeholders in `eas.json` → `submit.production` first:
+
+- **iOS** — `appleId` (your App Store Connect email), `ascAppId` (the app record's
+  numeric Apple ID), `appleTeamId`. Create the app record once at
+  [App Store Connect](https://appstoreconnect.apple.com) before the first submit.
+- **Android** — `serviceAccountKeyPath`: a Google Play service-account JSON key with
+  the *Release manager* role (Play Console → Setup → API access). Create the app in the
+  Play Console first; keep the JSON out of git (local path or an EAS secret).
+
+```sh
+# Uploads the latest production build to TestFlight / Play internal:
+eas submit --platform ios     --profile production
+eas submit --platform android --profile production
+```
+
+On iOS the build lands in **TestFlight** (add internal testers in App Store Connect);
+on Android it lands on the **internal testing** track (add testers by email in the Play
+Console). Both first submissions are interactive (Apple 2FA / Play app selection).
+
+## What's next (M7 — post-v1)
+
+The SSH terminal: a gomobile-compiled Go SSH engine behind an Expo Module with a
+SwiftTerm / Termux-view emulator. Its own project-sized milestone — see `docs/PLAN.md`.
