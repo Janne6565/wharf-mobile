@@ -5,7 +5,7 @@ import { useSettingsLogic } from "@/features/settings/useSettingsLogic";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
-  const { language, showDeveloper, openCryptoSelfTest } = useSettingsLogic();
+  const { language, showDeveloper, openCryptoSelfTest, lock, signOut } = useSettingsLogic();
 
   return (
     <ScreenContainer>
@@ -23,6 +23,13 @@ export default function SettingsScreen() {
               <SettingsRow label={t("settings.developer")} onPress={openCryptoSelfTest} />
             </>
           ) : null}
+        </Card>
+      </View>
+      <View className="mt-5">
+        <Card>
+          <SettingsRow label={t("settings.lockVault")} onPress={lock} />
+          <RowDivider />
+          <SettingsRow label={t("settings.signOut")} onPress={signOut} />
         </Card>
       </View>
     </ScreenContainer>

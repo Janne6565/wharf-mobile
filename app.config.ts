@@ -34,6 +34,16 @@ const config: ExpoConfig = {
     // wires the JSI native build. The wharf-argon2 local module (modules/) is
     // auto-linked by expo-modules-autolinking and needs no plugin entry.
     "react-native-libsodium",
+    // M2 native modules: keychain-backed token/DEK storage, the biometric
+    // prompt (with the iOS Face ID usage string), and the OAuth system browser.
+    "expo-secure-store",
+    "expo-web-browser",
+    [
+      "expo-local-authentication",
+      {
+        faceIDPermission: "Wharf uses Face ID to unlock your encrypted vault.",
+      },
+    ],
     [
       "expo-splash-screen",
       {

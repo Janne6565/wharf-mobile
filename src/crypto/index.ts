@@ -41,6 +41,9 @@ export {
   unlockWithPassword,
   unlockWithRecovery,
 } from "./wharfv";
+// Mobile-only extension (not part of the byte-identical port set) for the
+// biometric cached-DEK unlock path.
+export { openWithDek, unlockVaultWithDek } from "./wharfv-dek";
 export {
   generateKeypair,
   openDek,

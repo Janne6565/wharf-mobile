@@ -1,0 +1,46 @@
+import type { VaultHost } from "@/vault/document";
+import { filterHosts, groupHosts } from "./lib";
+
+const HOSTS: readonly VaultHost[] = [
+  { id: "1", name: "prod-api-01", user: "deploy", addr: "10.4.1.12", port: 22 },
+  { id: "2", name: "db-primary", user: "postgres", addr: "10.4.2.5", port: 5522, tags: ["db"] },
+  { id: "3", name: "homelab", user: "deniz", addr: "homelab.local", port: 22, tags: ["home"] },
+];
+
+describe("filterHosts", () => {
+  it("returns everything for an empty or whitespace query", () => {
+    expect(filterHosts(HOSTS, "")).toEqual(HOSTS);
+    expect(filterHosts(HOSTS, "   ")).toEqual(HOSTS);
+  });
+
+  it("matches by name, case-insensitively", () => {
+    expect(filterHosts(HOSTS, "PROD").map((h) => h.id)).toEqual(["1"]);
+  });
+
+  it("matches by user and address", () => {
+    expect(filterHosts(HOSTS, "postgres").map((h) => h.id)).toEqual(["2"]);
+    expect(filterHosts(HOSTS, "homelab.local").map((h) => h.id)).toEqual(["3"]);
+  });
+
+  it("matches the rendered user@addr:port target", () => {
+    expect(filterHosts(HOSTS, "deniz@homelab").map((h) => h.id)).toEqual(["3"]);
+    expect(filterHosts(HOSTS, ":5522").map((h) => h.id)).toEqual(["2"]);
+  });
+
+  it("matches by tag", () => {
+    expect(filterHosts(HOSTS, "db").map((h) => h.id)).toEqual(["2"]);
+  });
+
+  it("returns empty when nothing matches", () => {
+    expect(filterHosts(HOSTS, "nope")).toEqual([]);
+  });
+});
+
+describe("groupHosts", () => {
+  it("puts every host in the single PERSONAL section (project grouping is M4)", () => {
+    const sections = groupHosts(HOSTS);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].kind).toBe("personal");
+    expect(sections[0].hosts).toEqual(HOSTS);
+  });
+});

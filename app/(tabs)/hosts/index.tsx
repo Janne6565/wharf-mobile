@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import {
   AddButton,
   Card,
@@ -11,29 +11,71 @@ import {
   SearchField,
   SectionLabel,
 } from "@/components";
-import { useHostsLogic } from "@/features/hosts/useHostsLogic";
+import { type HostSectionData, useHostsLogic } from "@/features/hosts/useHostsLogic";
+
+const SECTION_LABEL_KEY = {
+  personal: "hosts.sectionPersonal",
+} as const;
+
+function HostSection({
+  section,
+  onOpenHost,
+}: {
+  readonly section: HostSectionData;
+  readonly onOpenHost: (hostId: string) => void;
+}) {
+  const { t } = useTranslation();
+  if (section.hosts.length === 0) {
+    return null;
+  }
+  return (
+    <View className="mt-5">
+      <SectionLabel>{t(SECTION_LABEL_KEY[section.kind])}</SectionLabel>
+      <Card>
+        {section.hosts.map((host, index) => (
+          <Fragment key={host.id}>
+            {index > 0 ? <RowDivider /> : null}
+            <HostRow
+              name={host.name}
+              target={host.target}
+              status={host.status}
+              onPress={() => onOpenHost(host.id)}
+            />
+          </Fragment>
+        ))}
+      </Card>
+    </View>
+  );
+}
+
+function EmptyState({ title, body }: { readonly title: string; readonly body?: string }) {
+  return (
+    <View className="mt-16 items-center px-6">
+      <Text className="text-center text-lg font-semibold text-fg">{title}</Text>
+      {body ? <Text className="mt-2 text-center text-sm text-muted">{body}</Text> : null}
+    </View>
+  );
+}
 
 export default function HostsScreen() {
   const { t } = useTranslation();
-  const { personalHosts } = useHostsLogic();
+  const { sections, query, setQuery, openHost, hasHosts, hasMatches } = useHostsLogic();
 
   return (
     <ScreenContainer>
       <ScreenTitle title={t("hosts.title")} action={<AddButton />} />
       <View className="mt-3.5">
-        <SearchField placeholder={t("hosts.search")} />
+        <SearchField placeholder={t("hosts.search")} value={query} onChangeText={setQuery} />
       </View>
-      <View className="mt-5">
-        <SectionLabel>{t("hosts.sectionPersonal")}</SectionLabel>
-        <Card>
-          {personalHosts.map((host, index) => (
-            <Fragment key={host.id}>
-              {index > 0 ? <RowDivider /> : null}
-              <HostRow name={host.name} target={host.target} status={host.status} />
-            </Fragment>
-          ))}
-        </Card>
-      </View>
+      {!hasHosts ? (
+        <EmptyState title={t("hosts.empty")} body={t("hosts.emptyBody")} />
+      ) : !hasMatches ? (
+        <EmptyState title={t("hosts.noMatches")} />
+      ) : (
+        sections.map((section) => (
+          <HostSection key={section.kind} section={section} onOpenHost={openHost} />
+        ))
+      )}
     </ScreenContainer>
   );
 }
