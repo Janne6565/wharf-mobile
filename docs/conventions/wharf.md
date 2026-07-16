@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 3f889bd.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 20c6f4a.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -18,7 +18,10 @@ only ever holds ciphertext.
   - github.com/Janne6565/wharf-mobile — companion app (React Native + Expo, public).
     Exists (2026-07-16): M0–M5 done (scaffold, crypto core w/ local wharf-argon2
     Expo Module, auth/pairing/biometric-DEK unlock, personal sync engine + host
-    CRUD, member-level projects, invite+finalize). Remaining: M6 polish + EAS
+    CRUD, member-level projects, invite+finalize). In-app Google/GitHub sign-in
+    (2026-07-16): authorize?client=mobile in the system browser, wharf://oauth
+    deep link returns a one-time device code exchanged in-app — no manual
+    pairing-code typing (/pair kept as fallback). Remaining: M6 polish + EAS
     TestFlight/Play release, on-hardware crypto self-test (Settings → Developer,
     dev builds). Mobile v1 boundary: NO rotation/removal/role-change endpoints
     surfaced. Plan in repo `docs/PLAN.md`.
@@ -135,6 +138,12 @@ invite by email, roles (owner/admin/member); private keys are never shared.
   creds are set (prod: sealed `wharf-oauth-secret`, optional — see
   wharf-deployment/docs/secrets.md). 61 tests green; `openapi.json` committed at
   repo root (Orval source). Projects/invites/rotation endpoints + mail client live (2026-07-16, 109 tests).
+  **Mobile OAuth deep-link hand-off** (2026-07-16): `authorize?client=mobile`
+  (client recorded on the one-time state row, V5 migration); a mobile callback
+  issues a one-time device code and 302s to `wharf://oauth?code=…` (config
+  `OAUTH_MOBILE_REDIRECT_URI`; no cookie, no refresh token minted), exchanged
+  at the existing `/device-codes/exchange`. Errors deep-link as `?error=<code>`;
+  `invalid_state` (client unknowable) keeps the web target. 122 tests.
 - **wharf-web:** **web auth flow + landing done** (2026-07-15): the 5 auth screens
   restyled to `Wharf Web Auth v2.dc.html` (all-mono, square, fieldset label chips,
   bracketed buttons, `❯_` logo; Google/GitHub OAuth buttons rendered but disabled —
