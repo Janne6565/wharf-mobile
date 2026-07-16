@@ -56,10 +56,12 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
   },
-  // TODO(M6): run `eas init` (interactive) to provision the EAS project, which
-  // writes extra.eas.projectId here and the owner/slug. Left unset in M0 so the
-  // scaffold stays free of account-bound state.
-  // extra: { eas: { projectId: "..." } },
+  owner: "janne6565",
+  extra: {
+    eas: {
+      projectId: "47bc9fd7-7935-4077-b3e2-e4f66441751f",
+    },
+  },
 };
 
 export default config;
