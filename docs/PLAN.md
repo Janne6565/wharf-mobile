@@ -93,7 +93,7 @@ app/  _layout.tsx  sign-in.tsx  pair.tsx  unlock.tsx  dev/crypto-selftest.tsx
       (tabs)/keys/index.tsx  (tabs)/settings/index.tsx
 src/  api/ crypto/ vault/ sync/ store/ features/ components/ i18n/ lib/
 modules/wharf-argon2/        # only if the fallback module is needed
-openapi.json  orval.config.ts  biome.json  jest.config.js  app.config.ts  eas.json
+openapi.json  orval.config.ts  biome.json  jest.config.js  app.config.js  eas.json
 ```
 
 Vault document types accept schema 1 AND 2 (`identity`); identity bootstrap writes schema 2 via `sealPayload` lazily on first Projects use.

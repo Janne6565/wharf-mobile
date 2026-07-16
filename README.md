@@ -27,7 +27,7 @@ the device. See [`docs/PLAN.md`](docs/PLAN.md) for the full plan.
 bun install                 # install dependencies
 
 # Native project is generated on demand (CNG); it is not committed:
-bunx expo prebuild          # generate ios/ and android/ from app.config.ts
+bunx expo prebuild          # generate ios/ and android/ from app.config.js
 
 bun run ios                 # build + run on the iOS simulator
 bun run android             # build + run on an Android emulator
@@ -67,7 +67,7 @@ The app icon, Android adaptive icon (foreground + monochrome), splash mark, and 
 favicon are all derived from the Wharf `❯_` brand mark by `bun run gen:icons`, which
 writes the source SVGs to `assets/brand/` and rasterises the PNGs into
 `assets/images/` (via `sharp`). Edit the geometry in `scripts/generate-icons.mjs` and
-re-run — never hand-edit the generated PNGs. `app.config.ts` points at those PNG paths.
+re-run — never hand-edit the generated PNGs. `app.config.js` points at those PNG paths.
 
 ## Building & releasing (EAS)
 
@@ -79,7 +79,7 @@ bun add -g eas-cli        # or use `bunx eas-cli@latest`
 eas login                 # log in to the Expo account (owner: janne6565)
 ```
 
-The EAS project is already linked (`app.config.ts` → `extra.eas.projectId`), so no
+The EAS project is already linked (`app.config.js` → `extra.eas.projectId`), so no
 `eas init` is needed.
 
 ### First builds (per profile in `eas.json`)

@@ -65,7 +65,7 @@ async function main() {
   await writeFile(resolve(BRAND_DIR, "wharf-icon.svg"), ICON_SVG);
   await writeFile(resolve(BRAND_DIR, "wharf-mark.svg"), MARK_SVG);
 
-  // Rasterised launcher assets wired into app.config.ts.
+  // Rasterised launcher assets wired into app.config.js.
   await rasterize(ICON_SVG, "icon.png"); // ios + android legacy + store
   await rasterize(MARK_SVG, "android-icon-foreground.png"); // adaptive foreground
   await rasterize(MONO_SVG, "android-icon-monochrome.png"); // adaptive monochrome
