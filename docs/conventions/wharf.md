@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 20c6f4a.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 1903ab1.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -25,6 +25,28 @@ only ever holds ciphertext.
     TestFlight/Play release, on-hardware crypto self-test (Settings → Developer,
     dev builds). Mobile v1 boundary: NO rotation/removal/role-change endpoints
     surfaced. Plan in repo `docs/PLAN.md`.
+    **Native crypto fix (2026-07-17):** react-native-libsodium's JSI only accepts
+    AEAD additional_data as a UTF-8 string — impossible for the binary WHARFV/WHARFP
+    header AAD, so every on-device vault open failed as "wrong master password".
+    Device backend now uses pure-JS @noble XChaCha20-Poly1305 + a faithful NaCl
+    sealed box, byte-parity-tested against libsodium in CI; only real auth failures
+    map to wrong-secret. **M7 SSH terminal built (2026-07-17,** pending on-device
+    verify): gomobile Go engine `sshengine/` ports wharf-tui sshx (TOFU,
+    stored-password replay, ring scrollback; password+keyboard-interactive ONLY —
+    no key mode on mobile, decision 5 in PLAN.md), `modules/wharf-ssh` Expo module
+    (Swift done + app compiles; Kotlin awaits an NDK for the aar), xterm.js in an
+    offline WebView asset, terminal screen per mock 03 with sticky ctrl/alt key row;
+    vault lock closes all sessions; 33 MB iOS xcframework committed so builds need
+    no Go toolchain (`scripts/build-ssh-engine.sh` rebuilds).
+    **Liquid Glass tab bar (2026-07-17,** pending on-device verify — needs a
+    dev-client rebuild): on iOS 26+ (`isLiquidGlassAvailable()`) the `(tabs)` bar
+    floats absolute/transparent over a native `GlassView` (expo-glass-effect
+    ~57.0.1); `ScreenContainer` pads bottom by the bar height via
+    `BottomTabBarHeightContext` from **`expo-router/js-tabs`** — SDK 57 vendors
+    bottom-tabs inside expo-router, so `@react-navigation/bottom-tabs` must NOT
+    be installed separately (a second copy would be a different context object
+    and the padding would silently read 0). Android/older iOS keep the solid
+    `shellRaised` bar unchanged.
   - github.com/Janne6565/wharf-deployment — Kustomize base + single `main` overlay
     (merge-to-main = prod deploy), ArgoCD app wired via cluster-deployment. Exists.
 - **Local:** clone the repo(s) above into `~/projects/wharf/<repo-name>/` (multi-repo, one

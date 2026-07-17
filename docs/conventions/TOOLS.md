@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: TOOLS.md @ 3f889bd.
+<!-- AUTO-SYNCED from agents KB: TOOLS.md @ 1903ab1.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Tools & Standard Stack
