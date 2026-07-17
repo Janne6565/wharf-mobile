@@ -2,10 +2,25 @@ import { Tabs } from "expo-router";
 import { KeyRound, LayoutGrid, Settings, TerminalSquare } from "lucide-react-native";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
+import { TabBarGlassBackground } from "@/components";
 import { SyncConflictSheet } from "@/features/syncConflict";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
+import { liquidGlassAvailable } from "@/lib/liquidGlass";
 import { colors } from "@/theme/colors";
 import { useAccentColor } from "@/theme/useAccentColor";
+
+// With Liquid Glass the bar floats over content on a transparent, borderless
+// surface backed by <TabBarGlassBackground>; otherwise it keeps the solid dark
+// shell. `as const` pins `position` to the ViewStyle literal.
+const glassTabBarStyle = {
+  position: "absolute",
+  backgroundColor: "transparent",
+  borderTopWidth: 0,
+} as const;
+const solidTabBarStyle = {
+  backgroundColor: colors.shellRaised,
+  borderTopColor: colors.borderSoft,
+};
 
 // The 4-tab bar from the mock: accent-tinted active state on the dark shell.
 // The tabs render only while the vault is unlocked, so this is also where the
@@ -23,10 +38,8 @@ export default function TabsLayout() {
           headerShown: false,
           tabBarActiveTintColor: accent,
           tabBarInactiveTintColor: colors.muted,
-          tabBarStyle: {
-            backgroundColor: colors.shellRaised,
-            borderTopColor: colors.borderSoft,
-          },
+          tabBarStyle: liquidGlassAvailable ? glassTabBarStyle : solidTabBarStyle,
+          tabBarBackground: liquidGlassAvailable ? () => <TabBarGlassBackground /> : undefined,
           tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
         }}
       >

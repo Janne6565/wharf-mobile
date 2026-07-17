@@ -7,6 +7,14 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
 
+// expo-glass-effect is a native (iOS) module with no JS implementation under Node.
+// Force the non-glass path: isLiquidGlassAvailable() is false, and GlassView is a
+// plain host View so any glass background still renders (as a no-op) in tests.
+jest.mock("expo-glass-effect", () => {
+  const { View } = require("react-native");
+  return { isLiquidGlassAvailable: () => false, GlassView: View };
+});
+
 // jest-expo's Modal renders null, so a component tree inside a <Modal> (our Sheet,
 // used by the invite flow) is invisible to Testing Library. Replace it with a
 // pass-through that honours `visible`, so sheet contents are queryable when open
