@@ -43,6 +43,17 @@ export function useHostDetailLogic() {
     }
   }, [router, hostId]);
 
+  // Opens the SSH terminal for this host (personal or project), carrying the
+  // projectId so the terminal resolves the right host list.
+  const openTerminal = useCallback(() => {
+    if (hostId) {
+      router.push({
+        pathname: "/(tabs)/hosts/terminal",
+        params: projectId ? { hostId, projectId } : { hostId },
+      });
+    }
+  }, [router, hostId, projectId]);
+
   const deletion = useMutation({
     mutationFn: () => deleteHost(hostId ?? ""),
     onSuccess: () => router.back(),
@@ -65,6 +76,7 @@ export function useHostDetailLogic() {
     projectName: project?.name,
     goBack,
     openEdit,
+    openTerminal,
     confirmDelete,
     isDeleting: deletion.isPending,
   };

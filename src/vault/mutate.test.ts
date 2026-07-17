@@ -3,6 +3,7 @@ import {
   deleteHostFromPayload,
   type HostInput,
   type HostMutationError,
+  setHostPasswordInPayload,
   updateHostInPayload,
 } from "./mutate";
 
@@ -112,6 +113,68 @@ describe("updateHostInPayload", () => {
 
   it("throws not-found for an unknown id", () => {
     expect(() => updateHostInPayload(DOC, "zzz", input())).toThrow(
+      expect.objectContaining({ code: "not-found" }),
+    );
+  });
+});
+
+describe("setHostPasswordInPayload", () => {
+  // A key-auth host carrying fields the mobile client does not model (keyPath,
+  // lastSeen, and a truly-foreign field a newer TUI might add) — all must survive.
+  const KEY_DOC = enc(
+    JSON.stringify({
+      schema: 2,
+      hosts: [
+        {
+          id: "bbb",
+          name: "keyhost",
+          user: "deniz",
+          addr: "prod.io",
+          port: 22,
+          authMethod: "key",
+          keyPath: "~/.ssh/id_ed25519",
+          source: "ssh_config",
+          lastSeen: "2026-07-10T09:12:44Z",
+          tags: ["prod"],
+          futureField: { nested: true },
+        },
+      ],
+      settings: { theme: "phosphor" },
+    }),
+  );
+
+  it("sets password + authMethod=password while preserving every other field", () => {
+    const host = parse(setHostPasswordInPayload(KEY_DOC, "bbb", "hunter2")).hosts[0];
+    expect(host).toEqual({
+      id: "bbb",
+      name: "keyhost",
+      user: "deniz",
+      addr: "prod.io",
+      port: 22,
+      authMethod: "password", // switched
+      password: "hunter2", // added
+      keyPath: "~/.ssh/id_ed25519", // preserved
+      source: "ssh_config", // preserved
+      lastSeen: "2026-07-10T09:12:44Z", // preserved
+      tags: ["prod"], // preserved
+      futureField: { nested: true }, // preserved (unknown field)
+    });
+  });
+
+  it("preserves sibling hosts and document scaffolding", () => {
+    const doc = parse(setHostPasswordInPayload(KEY_DOC, "bbb", "pw"));
+    expect(doc.schema).toBe(2);
+    expect(doc.settings).toEqual({ theme: "phosphor" });
+  });
+
+  it("overwrites an existing stored password", () => {
+    const host = parse(setHostPasswordInPayload(DOC, "aaa", "newpw")).hosts[0];
+    expect(host.password).toBe("newpw");
+    expect(host.authMethod).toBe("password");
+  });
+
+  it("throws not-found for an unknown id", () => {
+    expect(() => setHostPasswordInPayload(KEY_DOC, "zzz", "pw")).toThrow(
       expect.objectContaining({ code: "not-found" }),
     );
   });

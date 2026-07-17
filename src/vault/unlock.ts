@@ -20,6 +20,7 @@ import { store } from "@/store";
 import { projectsReset } from "@/store/projectsSlice";
 import { setBiometricEnrolled, vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import { establishSyncBaseline } from "@/sync/deps";
+import { closeAll as closeAllSshSessions } from "../../modules/wharf-ssh";
 import {
   canEnrollBiometrics,
   clearBiometricDek,
@@ -137,8 +138,11 @@ export async function enrollBiometricsForSession(prompt: string): Promise<boolea
 
 // lockVault zeroes every in-memory secret (DEK, payload, master password) and
 // flips the derived state to locked. Called by the lock action and by the
-// AppState background listener (lock-on-background, PLAN §B).
+// AppState background listener (lock-on-background, PLAN §B). Any live SSH
+// sessions are torn down too — a locked vault must not keep a shell open behind
+// the unlock screen. closeAll is fire-and-forget so lock stays synchronous.
 export function lockVault(): void {
+  void closeAllSshSessions();
   clearVaultSession();
   clearMasterPassword();
   store.dispatch(vaultLocked());

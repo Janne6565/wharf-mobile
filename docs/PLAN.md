@@ -118,7 +118,19 @@ Vault document types accept schema 1 AND 2 (`identity`); identity bootstrap writ
 - **M4 Projects (member level)** — identity bootstrap, projects list/detail per mock, DEK unwrap + WHARFP open, project hosts grouped in Hosts tab, accept/decline, awaiting-access state. *Verify:* invite from web → accept on phone → hosts appear after finalize.
 - **M5 Invite + finalize (light admin)** — invite sheet, revoke, background finalize pass. *Verify:* phone as the admin surface end-to-end; rotation endpoints unused.
 - **M6 Polish + release** — Settings, Keys screen, empty/loading/error branches, i18n parity, EAS release. *Verify:* full manual pass vs mock; installs on both platforms.
-- **M7 (post-v1) Terminal** — gomobile SSH engine + SwiftTerm/Termux-view emulation; separate plan.
+- **M7 (post-v1) Terminal** — **built 2026-07-17**, pending on-device verification. Architecture
+  as sketched in §A: a gomobile Go SSH engine (`sshengine/`, ports wharf-tui `internal/sshx`:
+  skeema/knownhosts TOFU, stored-password replay, ring-buffer scrollback; **password +
+  keyboard-interactive only** — no key mode on mobile, per decision 5) bridged by the
+  `modules/wharf-ssh` Expo module (Swift done; Kotlin written, compiles only once
+  `scripts/build-ssh-engine.sh` produces the aar on a machine with an Android NDK), rendered by
+  xterm.js in a react-native-webview (`src/terminal/terminal.html`, self-contained offline asset
+  regenerated via `bun run gen:terminal`). Terminal screen per mock 03 with sticky ctrl/alt
+  accessory row; vault lock closes all sessions. The iOS engine artifact
+  (`modules/wharf-ssh/ios/WharfSshEngine.xcframework`, 33 MB) is committed so EAS/dev builds
+  need no Go toolchain; rebuild it with `scripts/build-ssh-engine.sh`.
+  *Verify:* interactive shell against a real host on physical iOS; TOFU prompt on first
+  connect; stored-password replay; remember-toggle persists and syncs to the TUI.
 
 ---
 
@@ -126,6 +138,11 @@ Vault document types accept schema 1 AND 2 (`identity`); identity bootstrap writ
 
 1. Repo visibility: **public** (`Janne6565/wharf-mobile`).
 2. Distribution: **TestFlight + Play internal** — user has both Apple Developer and Google Play accounts; EAS submit config lands in M6.
-3. Terminal deferred to post-v1 M7: **confirmed**.
+3. Terminal deferred to post-v1 M7: **confirmed**. (Built 2026-07-17 — see M7.)
 4. Unlock posture: **biometric-gated cached DEK** with password fallback.
+5. Mobile SSH auth (resolved 2026-07-17): **no key mode on mobile** — password +
+   keyboard-interactive only. Hosts synced with `authMethod:"key"` get a password prompt
+   with a "remember" toggle (persists password + flips the host to password mode, exactly
+   like the TUI's `ctrl+r`); remember is hidden for project hosts (only the personal
+   payload can store a password).
 5. Admin scope v1: **member-plus** (invites + finalize-keys; no rotation/removal/role-change): **confirmed**.

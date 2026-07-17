@@ -14,6 +14,7 @@ import {
   addHostToPayload,
   deleteHostFromPayload,
   type HostInput,
+  setHostPasswordInPayload,
   updateHostInPayload,
 } from "./mutate";
 import { writeVaultBlob } from "./storage";
@@ -56,5 +57,14 @@ export async function editHost(id: string, input: HostInput): Promise<void> {
 // deleteHost removes a host and persists the shortened document.
 export async function deleteHost(id: string): Promise<void> {
   const payload = deleteHostFromPayload(requireSession().payload, id);
+  await commitPayload(payload);
+}
+
+// setHostPassword stores a per-host password (remember-this-password) and flips
+// the host to password auth, then persists + schedules a push down the same path
+// as the host-edit flow — so a remembered password reaches every device on the
+// next sync. Called by the terminal flow after a successful connect.
+export async function setHostPassword(id: string, password: string): Promise<void> {
+  const payload = setHostPasswordInPayload(requireSession().payload, id, password);
   await commitPayload(payload);
 }

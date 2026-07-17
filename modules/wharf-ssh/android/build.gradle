@@ -1,0 +1,20 @@
+apply plugin: 'com.android.library'
+apply plugin: 'expo-module-gradle-plugin'
+
+group = 'expo.modules.wharfssh'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.wharfssh"
+  defaultConfig {
+    minSdkVersion 24
+  }
+}
+
+dependencies {
+  // The gomobile-compiled engine (package `sshengine`, class `Sshengine`). This aar
+  // is produced by scripts/build-ssh-engine.sh when an Android NDK is present and
+  // rsynced into libs/ — it is NOT committed, so an Android build fails until the
+  // engine has been built locally (see README.md). iOS ships its own xcframework.
+  implementation files("libs/sshengine.aar")
+}

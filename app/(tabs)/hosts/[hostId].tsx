@@ -35,8 +35,17 @@ function ProjectBadge({ projectName }: { readonly projectName: string }) {
 export default function HostDetailScreen() {
   const { t } = useTranslation();
   const accent = useAccentColor();
-  const { host, target, isProjectHost, projectName, goBack, openEdit, confirmDelete, isDeleting } =
-    useHostDetailLogic();
+  const {
+    host,
+    target,
+    isProjectHost,
+    projectName,
+    goBack,
+    openEdit,
+    openTerminal,
+    confirmDelete,
+    isDeleting,
+  } = useHostDetailLogic();
 
   const onDelete = () =>
     confirmDelete({
@@ -77,6 +86,14 @@ export default function HostDetailScreen() {
           <Text className="mt-1 font-mono-bold text-2xl text-fg">{host.name}</Text>
           <Text className="mt-1 text-[13px] text-muted">{target}</Text>
           {isProjectHost && projectName ? <ProjectBadge projectName={projectName} /> : null}
+          <View className="mt-6">
+            <Button
+              label={t("terminal.connect")}
+              variant="accent"
+              onPress={openTerminal}
+              testID="host-detail-connect"
+            />
+          </View>
           <View className="mt-6">
             <Card>
               <DetailRow label={t("hostDetail.user")} value={host.user} />

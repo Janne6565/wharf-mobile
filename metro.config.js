@@ -10,4 +10,9 @@ const config = getDefaultConfig(__dirname);
 // the tests still run.
 config.resolver.blockList = /.*\.(test|spec)\.[jt]sx?$/;
 
+// Bundle the committed, self-contained terminal.html (xterm.js + JetBrains Mono
+// inlined) as a static asset so `require("@/terminal/terminal.html")` resolves to
+// a localUri the WebView loads — works in release builds on both platforms.
+config.resolver.assetExts.push("html");
+
 module.exports = withNativeWind(config, { input: "./global.css" });

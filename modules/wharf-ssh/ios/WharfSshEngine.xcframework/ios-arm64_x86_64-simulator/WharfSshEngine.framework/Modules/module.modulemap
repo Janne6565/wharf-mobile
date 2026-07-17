@@ -1,0 +1,8 @@
+framework module "WharfSshEngine" {
+	header "ref.h"
+    header "Sshengine.objc.h"
+    header "Universe.objc.h"
+    header "WharfSshEngine.h"
+
+    export *
+}

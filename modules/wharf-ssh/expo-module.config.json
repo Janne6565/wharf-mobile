@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["WharfSshModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.wharfssh.WharfSshModule"]
+  }
+}

@@ -17,6 +17,11 @@ module.exports = {
     // these must precede the generic `@/` alias.
     "^@/crypto/primitives$": "<rootDir>/src/crypto/primitives/index.node.ts",
     "^\\./primitives$": "<rootDir>/src/crypto/primitives/index.node.ts",
+    // The WharfSsh native module wraps requireNativeModule, which cannot run
+    // under Node. Pin every `modules/wharf-ssh` import (relative, from any depth)
+    // to the in-memory fake — same seam idea as the crypto primitives above.
+    // Metro/tsc still resolve modules/wharf-ssh/index.ts on device.
+    "modules/wharf-ssh$": "<rootDir>/modules/wharf-ssh/index.node.ts",
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   collectCoverageFrom: ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],

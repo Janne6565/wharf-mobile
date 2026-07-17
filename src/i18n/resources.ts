@@ -237,6 +237,48 @@ const enCommon = {
     argon2Timing: "argon2id (t=3, m=64 MiB, p=4)",
     rerun: "Run again",
   },
+  terminal: {
+    connect: "Connect",
+    status: {
+      connected: "connected",
+      connecting: "connecting…",
+      ended: "session ended",
+    },
+    ended: {
+      clean: "Session ended.",
+      reconnect: "Reconnect",
+    },
+    errors: {
+      host_key_changed: "Host key changed — connection refused.",
+      host_key_rejected: "Host key not accepted.",
+      auth_failed: "Authentication failed.",
+      canceled: "Connection canceled.",
+      timeout: "Connection timed out.",
+      network: "Network error. Check your connection.",
+      unknown: "Connection failed.",
+    },
+    hostKey: {
+      title: "Verify host key",
+      warning:
+        "This is the first time connecting to {{host}}. Confirm the fingerprint matches the server before accepting.",
+      host: "Host",
+      keyType: "Key type",
+      fingerprint: "SHA256 fingerprint",
+      accept: "Accept & connect",
+      decline: "Decline",
+    },
+    secret: {
+      passwordTitle: "Password required",
+      passwordBody: "Enter the password for this host.",
+      passwordRetry: "The password was rejected. Try again.",
+      passwordLabel: "Password",
+      remember: "Remember this password",
+      kiTitle: "Server prompt",
+      responseLabel: "Response",
+      submit: "Continue",
+      cancel: "Cancel",
+    },
+  },
 } as const;
 
 type DeepStringSchema<T> = {
@@ -477,6 +519,48 @@ const deCommon: CommonSchema = {
     someFailed: "Einige Prüfungen fehlgeschlagen.",
     argon2Timing: "argon2id (t=3, m=64 MiB, p=4)",
     rerun: "Erneut ausführen",
+  },
+  terminal: {
+    connect: "Verbinden",
+    status: {
+      connected: "verbunden",
+      connecting: "verbinde…",
+      ended: "Sitzung beendet",
+    },
+    ended: {
+      clean: "Sitzung beendet.",
+      reconnect: "Erneut verbinden",
+    },
+    errors: {
+      host_key_changed: "Host-Schlüssel geändert — Verbindung abgelehnt.",
+      host_key_rejected: "Host-Schlüssel nicht akzeptiert.",
+      auth_failed: "Authentifizierung fehlgeschlagen.",
+      canceled: "Verbindung abgebrochen.",
+      timeout: "Zeitüberschreitung der Verbindung.",
+      network: "Netzwerkfehler. Prüfe deine Verbindung.",
+      unknown: "Verbindung fehlgeschlagen.",
+    },
+    hostKey: {
+      title: "Host-Schlüssel prüfen",
+      warning:
+        "Dies ist die erste Verbindung zu {{host}}. Bestätige, dass der Fingerabdruck mit dem Server übereinstimmt, bevor du akzeptierst.",
+      host: "Host",
+      keyType: "Schlüsseltyp",
+      fingerprint: "SHA256-Fingerabdruck",
+      accept: "Akzeptieren & verbinden",
+      decline: "Ablehnen",
+    },
+    secret: {
+      passwordTitle: "Passwort erforderlich",
+      passwordBody: "Gib das Passwort für diesen Host ein.",
+      passwordRetry: "Das Passwort wurde abgelehnt. Versuche es erneut.",
+      passwordLabel: "Passwort",
+      remember: "Dieses Passwort merken",
+      kiTitle: "Server-Eingabeaufforderung",
+      responseLabel: "Antwort",
+      submit: "Weiter",
+      cancel: "Abbrechen",
+    },
   },
 };
 

@@ -154,3 +154,25 @@ export function deleteHostFromPayload(payload: Uint8Array, id: string): Uint8Arr
   }
   return serialize(doc, next);
 }
+
+// setHostPasswordInPayload stores a per-host password on the host with id and
+// switches its authMethod to "password" — exactly what the TUI's "remember this
+// password" (ctrl+r) does. Every other stored field (keyPath, source, tags,
+// lastSeen, and any field a newer TUI adds) is preserved: we mutate the RAW
+// parsed host, copying nothing away. Used by the terminal flow when the user
+// ticks "remember" and the connection then succeeds.
+export function setHostPasswordInPayload(
+  payload: Uint8Array,
+  id: string,
+  password: string,
+): Uint8Array {
+  const { doc, hosts } = parse(payload);
+  const index = hosts.findIndex((h) => h.id === id);
+  if (index < 0) {
+    throw new HostMutationError("not-found");
+  }
+  const next = hosts.map((h) => ({ ...h }));
+  next[index].password = password;
+  next[index].authMethod = "password";
+  return serialize(doc, next);
+}

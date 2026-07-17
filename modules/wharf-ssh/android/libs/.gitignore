@@ -1,0 +1,4 @@
+# The gomobile-built engine binding is not committed (it needs an Android NDK to
+# produce; scripts/build-ssh-engine.sh rsyncs it here). Keep the dir, ignore the aar.
+*.aar
+!.gitkeep
