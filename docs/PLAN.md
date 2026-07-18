@@ -132,6 +132,15 @@ Vault document types accept schema 1 AND 2 (`identity`); identity bootstrap writ
   *Verify:* interactive shell against a real host on physical iOS; TOFU prompt on first
   connect; stored-password replay; remember-toggle persists and syncs to the TUI.
 
+- **M8 — vault-synced SSH keys** (planned 2026-07-19, supersedes decision 5's no-key-mode):
+  opt-in per-key sync of SSH private keys through the personal vault (schema 3, keyfile
+  bytes verbatim so passphrases stay intact), TUI sync/unsync UI + vault-key signers,
+  mobile engine key auth (+ passphrase prompt kind) with password fallback, Keys tab
+  lists synced keys. Full design: `docs/KEYSYNC.md`.
+  *Verify:* key generated + synced on the TUI authenticates a key-only
+  (`PasswordAuthentication no`) host from physical iOS; passphrase-protected key prompts
+  on connect; old TUI build refuses the schema-3 vault.
+
 ---
 
 ## F. Decisions (resolved 2026-07-16)
@@ -143,6 +152,8 @@ Vault document types accept schema 1 AND 2 (`identity`); identity bootstrap writ
 5. Mobile SSH auth (resolved 2026-07-17): **no key mode on mobile** — password +
    keyboard-interactive only. Hosts synced with `authMethod:"key"` get a password prompt
    with a "remember" toggle (persists password + flips the host to password mode, exactly
-   like the TUI's `ctrl+r`); remember is hidden for project hosts (only the personal
-   payload can store a password).
+   like the TUI's `ctrl+r`). *(Update 2026-07-19: remember now also works for project
+   hosts — it writes into the shared project vault via the M-post-v1 project write path.
+   The no-key-mode half is **superseded** by the planned vault-synced SSH keys — see
+   `docs/KEYSYNC.md` / M8.)*
 5. Admin scope v1: **member-plus** (invites + finalize-keys; no rotation/removal/role-change): **confirmed**.
