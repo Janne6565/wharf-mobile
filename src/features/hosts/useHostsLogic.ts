@@ -1,8 +1,8 @@
 // Logic for the Hosts tab: reads the decrypted personal host list from the vault
 // slice and the decrypted project hosts from the projects slice, applies the live
 // search filter, and groups into sections (project sections first, then PERSONAL —
-// the mock order). Status dots are static "unknown" (grey); reachability probing
-// is a later milestone.
+// the mock order). Every host is TCP-probed for reachability on focus (see
+// useHostProbes) and its status dot is coloured by the result (grey until probed).
 
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import type { HostStatus } from "@/components";
 import { useAppSelector } from "@/store/hooks";
 import { hostTarget } from "@/vault/document";
 import { filterHosts, groupHosts, type ProjectHostGroup } from "./lib";
+import { type ProbeTarget, useHostProbes } from "./useHostProbes";
 
 export interface HostRowData {
   readonly id: string;
@@ -32,8 +33,18 @@ export interface HostSectionData {
 export function useHostsLogic() {
   const personal = useAppSelector((state) => state.vault.hosts);
   const projects = useAppSelector((state) => state.projects.projects);
+  const probeResults = useAppSelector((state) => state.probes.results);
   const router = useRouter();
   const [query, setQuery] = useState("");
+
+  // Probe every host on this tab (personal + all project hosts), keyed by host id.
+  // Built from the full lists (not the filtered view) so the search box never
+  // changes what gets probed.
+  const targets: readonly ProbeTarget[] = useMemo(() => {
+    const all = [...personal, ...projects.flatMap((project) => project.hosts)];
+    return all.map((host) => ({ id: host.id, host: host.addr, port: host.port }));
+  }, [personal, projects]);
+  useHostProbes(targets);
 
   const sections: readonly HostSectionData[] = useMemo(() => {
     const projectGroups: ProjectHostGroup[] = projects
@@ -50,12 +61,12 @@ export function useHostsLogic() {
           id: host.id,
           name: host.name,
           target: hostTarget(host),
-          status: "unknown" as const,
+          status: probeResults[host.id]?.status ?? "unknown",
           ...(projectId ? { projectId } : {}),
         })),
       };
     });
-  }, [personal, projects, query]);
+  }, [personal, projects, probeResults, query]);
 
   const openHost = useCallback(
     (hostId: string, projectId?: string) => {

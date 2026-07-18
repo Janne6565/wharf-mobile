@@ -27,6 +27,7 @@ export * from "./contract";
 // NativeModule exposes `addListener(eventName, listener): EventSubscription`.
 interface WharfSshNative {
   connect(opts: SshConnectOptions): Promise<void>;
+  probe(host: string, port: number, timeoutMs: number): Promise<number>;
   cancelConnect(sessionId: string): Promise<void>;
   write(sessionId: string, dataB64: string): Promise<void>;
   resize(sessionId: string, cols: number, rows: number): Promise<void>;
@@ -45,6 +46,10 @@ const native = requireNativeModule<WharfSshNative>("WharfSsh");
 
 export function connect(opts: SshConnectOptions): Promise<void> {
   return native.connect(opts);
+}
+
+export function probe(host: string, port: number, timeoutMs: number): Promise<number> {
+  return native.probe(host, port, timeoutMs);
 }
 
 export function cancelConnect(sessionId: string): Promise<void> {
@@ -102,6 +107,7 @@ export function subscribeSecretPrompt(
 // Compile-time proof this wrapper satisfies the shared contract.
 const _api: WharfSshApi = {
   connect,
+  probe,
   cancelConnect,
   write,
   resize,

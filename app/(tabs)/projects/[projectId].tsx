@@ -107,6 +107,7 @@ export default function ProjectDetailScreen() {
   const {
     project,
     hosts,
+    hostStatus,
     members,
     invites,
     currentUserId,
@@ -195,7 +196,7 @@ export default function ProjectDetailScreen() {
                     <HostRow
                       name={host.name}
                       target={hostTarget(host)}
-                      status="unknown"
+                      status={hostStatus(host.id)}
                       onPress={() => openHost(host.id)}
                     />
                   </Fragment>

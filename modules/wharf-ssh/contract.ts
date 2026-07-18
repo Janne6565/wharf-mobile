@@ -112,6 +112,12 @@ export interface SshSubscription {
 // shape; Jest swaps in the fake, Metro/tsc use the native wrapper.
 export interface WharfSshApi {
   connect: (opts: SshConnectOptions) => Promise<void>;
+  // TCP-probe host:port for the host-list reachability dot. Resolves to the dial
+  // RTT in milliseconds (minimum 1) on success, or -1 when unreachable (refused,
+  // unroutable, or timed out). Stateless: needs no session/engine and is safe to
+  // call with none. Classification (online vs degraded) is done JS-side so the
+  // threshold lives with the UI (see classifyProbe).
+  probe: (host: string, port: number, timeoutMs: number) => Promise<number>;
   cancelConnect: (sessionId: string) => Promise<void>;
   write: (sessionId: string, dataB64: string) => Promise<void>;
   resize: (sessionId: string, cols: number, rows: number) => Promise<void>;

@@ -41,6 +41,7 @@ function emptyRegistry(): Registry {
 // Recorded calls, exposed for assertions.
 export interface FakeCalls {
   connect: SshConnectOptions[];
+  probe: Array<{ host: string; port: number; timeoutMs: number }>;
   cancelConnect: string[];
   write: Array<{ sessionId: string; dataB64: string }>;
   resize: Array<{ sessionId: string; cols: number; rows: number }>;
@@ -54,6 +55,7 @@ export interface FakeCalls {
 function emptyCalls(): FakeCalls {
   return {
     connect: [],
+    probe: [],
     cancelConnect: [],
     write: [],
     resize: [],
@@ -74,12 +76,18 @@ export const __calls: FakeCalls = emptyCalls();
 let connectController: { resolve: () => void; reject: (error: Error) => void } | null = null;
 let snapshotValue = "";
 
+// What probe() resolves with. Either a fixed RTT (or -1 for unreachable) or a
+// per-target function so a test can script different outcomes per host. Defaults
+// to -1 (unreachable) so an unconfigured test sees the "offline" path.
+let probeResult: number | ((host: string, port: number) => number) = -1;
+
 // __reset clears all state between tests.
 export function __reset(): void {
   registry = emptyRegistry();
   Object.assign(__calls, emptyCalls());
   connectController = null;
   snapshotValue = "";
+  probeResult = -1;
 }
 
 // __emit dispatches an event to the current subscribers.
@@ -108,6 +116,12 @@ export function __setSnapshot(value: string): void {
   snapshotValue = value;
 }
 
+// __setProbeResult scripts what probe() resolves with — a fixed RTT (or -1 for
+// unreachable), or a function computing it from the host/port.
+export function __setProbeResult(result: number | ((host: string, port: number) => number)): void {
+  probeResult = result;
+}
+
 function subscribe<K extends keyof WharfSshEventMap>(
   eventName: K,
   listener: Listener<K>,
@@ -127,6 +141,12 @@ export function connect(opts: SshConnectOptions): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     connectController = { resolve, reject };
   });
+}
+
+export function probe(host: string, port: number, timeoutMs: number): Promise<number> {
+  __calls.probe.push({ host, port, timeoutMs });
+  const result = typeof probeResult === "function" ? probeResult(host, port) : probeResult;
+  return Promise.resolve(result);
 }
 
 export function cancelConnect(sessionId: string): Promise<void> {
@@ -192,6 +212,7 @@ export function subscribeSecretPrompt(
 // Compile-time proof the fake satisfies the same contract as the native wrapper.
 const _api: WharfSshApi = {
   connect,
+  probe,
   cancelConnect,
   write,
   resize,

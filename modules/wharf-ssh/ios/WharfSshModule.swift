@@ -148,6 +148,16 @@ public class WharfSshModule: Module {
       }
     }
 
+    AsyncFunction("probe") { (host: String, port: Int, timeoutMs: Int, promise: Promise) in
+      // SshengineProbe BLOCKS up to timeoutMs on the TCP dial, so run it off the
+      // Expo module queue (like connect) and resolve from the connect queue. It is
+      // a stateless package function — no engine instance is needed.
+      sshConnectQueue.async {
+        let rtt = SshengineProbe(host, port, timeoutMs)
+        promise.resolve(rtt)
+      }
+    }
+
     AsyncFunction("cancelConnect") { (sessionId: String) in
       // No-op if no engine yet: there can be no in-flight connect without one.
       self.currentEngine()?.cancelConnect(sessionId)

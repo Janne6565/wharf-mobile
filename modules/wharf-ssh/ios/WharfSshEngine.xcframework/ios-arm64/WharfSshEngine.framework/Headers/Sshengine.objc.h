@@ -160,6 +160,20 @@ events to cb.
  */
 FOUNDATION_EXPORT SshengineEngine* _Nullable SshengineNewEngine(NSString* _Nullable knownHostsPath, id<SshengineCallbacks> _Nullable cb);
 
+/**
+ * Probe TCP-dials host:port and reports reachability for the host-list status
+dot. It returns the dial RTT in milliseconds (minimum 1) on success, or -1
+when the dial fails (refused, unreachable, or timed out). port <= 0 defaults
+to 22; timeoutMs <= 0 defaults to 3000. Classification (online vs degraded)
+is done by the JS side so the threshold lives with the UI.
+
+This is a stateless package-level function (gomobile binds it as
+SshengineProbe): it needs no engine instance and is safe to call with no
+session. It mirrors wharf-tui's probe.Dial — a single net.DialTimeout with
+the connection closed immediately on success.
+ */
+FOUNDATION_EXPORT long SshengineProbe(NSString* _Nullable host, long port, long timeoutMs);
+
 @class SshengineCallbacks;
 
 /**

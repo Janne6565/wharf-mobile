@@ -1,7 +1,33 @@
-// Pure host list helpers: search filtering and section grouping. Framework-free
-// so they are unit-testable without React (REACT.md lib.ts convention).
+// Pure host list helpers: search filtering, section grouping, and probe result
+// classification. Framework-free so they are unit-testable without React
+// (REACT.md lib.ts convention).
 
 import { hostTarget, type VaultHost } from "@/vault/document";
+
+// One probe = a TCP dial bounded by this timeout (mirrors wharf-tui
+// probe.DefaultTimeout). Passed to the native probe() as timeoutMs.
+export const PROBE_TIMEOUT_MS = 3000;
+
+// Dial RTT above which a reachable host is flagged "degraded" instead of
+// "online" — parity with wharf-tui probe.DegradedRTT.
+export const DEGRADED_RTT_MS = 750;
+
+// The advisory reachability of a host, mapped to a status-dot colour. Distinct
+// from "unknown" (unprobed / probe failed to run), which is not a probe result.
+export type ProbeStatus = "online" | "degraded" | "offline";
+
+// Classify a native probe RTT (milliseconds, -1 for an unreachable dial) into a
+// status. Mirrors wharf-tui's probeStatusText mapping: a failed dial is offline,
+// a slow-but-reachable dial is degraded, and everything else is online.
+export function classifyProbe(rttMs: number): ProbeStatus {
+  if (rttMs < 0) {
+    return "offline";
+  }
+  if (rttMs > DEGRADED_RTT_MS) {
+    return "degraded";
+  }
+  return "online";
+}
 
 // Case-insensitive substring match over the fields a user would search by:
 // name, user, address, the rendered user@addr:port target, and tags.

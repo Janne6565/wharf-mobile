@@ -7,11 +7,13 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Alert } from "react-native";
+import type { HostStatus } from "@/components";
 import { useAppSelector } from "@/store/hooks";
 import { hostTarget } from "@/vault/document";
 import { deleteHost } from "@/vault/hostMutations";
+import { type ProbeTarget, useHostProbes } from "./useHostProbes";
 
 export interface DeleteConfirmCopy {
   readonly title: string;
@@ -32,6 +34,16 @@ export function useHostDetailLogic() {
 
   const isProjectHost = Boolean(projectId);
   const host = isProjectHost ? projectHost : personalHost;
+
+  // Probe this host for the status row when the screen is focused.
+  const probeResult = useAppSelector((state) => (host ? state.probes.results[host.id] : undefined));
+  const probeTargets: readonly ProbeTarget[] = useMemo(
+    () => (host ? [{ id: host.id, host: host.addr, port: host.port }] : []),
+    [host],
+  );
+  useHostProbes(probeTargets);
+  const status: HostStatus = probeResult?.status ?? "unknown";
+  const rttMs = probeResult?.rttMs ?? -1;
 
   const goBack = useCallback(() => {
     router.back();
@@ -72,6 +84,8 @@ export function useHostDetailLogic() {
   return {
     host,
     target: host ? hostTarget(host) : "",
+    status,
+    rttMs,
     isProjectHost,
     projectName: project?.name,
     goBack,

@@ -1,5 +1,5 @@
 import type { VaultHost } from "@/vault/document";
-import { filterHosts, groupHosts } from "./lib";
+import { classifyProbe, DEGRADED_RTT_MS, filterHosts, groupHosts } from "./lib";
 
 const HOSTS: readonly VaultHost[] = [
   { id: "1", name: "prod-api-01", user: "deploy", addr: "10.4.1.12", port: 22 },
@@ -61,5 +61,22 @@ describe("groupHosts", () => {
     }
     expect(sections[1].kind).toBe("personal");
     expect(sections[1].hosts).toEqual(HOSTS);
+  });
+});
+
+describe("classifyProbe", () => {
+  it("classifies a failed dial (-1) as offline", () => {
+    expect(classifyProbe(-1)).toBe("offline");
+  });
+
+  it("classifies a fast dial as online", () => {
+    expect(classifyProbe(1)).toBe("online");
+    expect(classifyProbe(42)).toBe("online");
+    expect(classifyProbe(DEGRADED_RTT_MS)).toBe("online");
+  });
+
+  it("classifies a dial slower than the degraded threshold as degraded", () => {
+    expect(classifyProbe(DEGRADED_RTT_MS + 1)).toBe("degraded");
+    expect(classifyProbe(2500)).toBe("degraded");
   });
 });

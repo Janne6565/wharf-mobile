@@ -76,6 +76,15 @@ const enCommon = {
     empty: "No hosts yet.",
     emptyBody: "Hosts you add in the terminal or on the web appear here after sync.",
     noMatches: "No hosts match your search.",
+    status: {
+      label: "Status",
+      online: "online",
+      degraded: "degraded",
+      offline: "offline",
+      unknown: "unknown",
+      // Reachable status with the dial RTT appended, e.g. "online · 42 ms".
+      rtt: "{{status}} · {{ms}} ms",
+    },
   },
   hostDetail: {
     back: "Hosts",
@@ -360,6 +369,15 @@ const deCommon: CommonSchema = {
     emptyBody:
       "Hosts, die du im Terminal oder im Web anlegst, erscheinen hier nach der Synchronisierung.",
     noMatches: "Keine Hosts entsprechen deiner Suche.",
+    status: {
+      label: "Status",
+      online: "online",
+      degraded: "träge",
+      offline: "offline",
+      unknown: "unbekannt",
+      // Erreichbarkeit mit angehängter Dial-RTT, z. B. "online · 42 ms".
+      rtt: "{{status}} · {{ms}} ms",
+    },
   },
   hostDetail: {
     back: "Hosts",

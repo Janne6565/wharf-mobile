@@ -1,7 +1,8 @@
 import { ChevronLeft, FolderGit2, Pencil } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
-import { Button, Card, RowDivider, ScreenContainer } from "@/components";
+import type { HostStatus } from "@/components";
+import { Button, Card, RowDivider, ScreenContainer, StatusDot } from "@/components";
 import { useHostDetailLogic } from "@/features/hosts/useHostDetailLogic";
 import { colors } from "@/theme/colors";
 import { useAccentColor } from "@/theme/useAccentColor";
@@ -11,6 +12,26 @@ function DetailRow({ label, value }: { readonly label: string; readonly value: s
     <View className="flex-row items-center gap-3 px-4 py-3.5">
       <Text className="flex-1 text-[15px] text-muted">{label}</Text>
       <Text className="font-mono text-[15px] text-fg">{value}</Text>
+    </View>
+  );
+}
+
+// The reachability row: the label on the left, then the status dot and a text
+// value (with the dial RTT appended for a reachable host, e.g. "online · 42 ms").
+function StatusRow({
+  label,
+  status,
+  value,
+}: {
+  readonly label: string;
+  readonly status: HostStatus;
+  readonly value: string;
+}) {
+  return (
+    <View className="flex-row items-center gap-3 px-4 py-3.5">
+      <Text className="flex-1 text-[15px] text-muted">{label}</Text>
+      <StatusDot status={status} />
+      <Text className="text-[15px] text-fg">{value}</Text>
     </View>
   );
 }
@@ -38,6 +59,8 @@ export default function HostDetailScreen() {
   const {
     host,
     target,
+    status,
+    rttMs,
     isProjectHost,
     projectName,
     goBack,
@@ -46,6 +69,14 @@ export default function HostDetailScreen() {
     confirmDelete,
     isDeleting,
   } = useHostDetailLogic();
+
+  const statusLabel = t(`hosts.status.${status}`);
+  // Append the dial RTT only for a reachable host (online/degraded); offline and
+  // unknown have no meaningful latency to show.
+  const statusValue =
+    status === "online" || status === "degraded"
+      ? t("hosts.status.rtt", { status: statusLabel, ms: String(rttMs) })
+      : statusLabel;
 
   const onDelete = () =>
     confirmDelete({
@@ -96,6 +127,8 @@ export default function HostDetailScreen() {
           </View>
           <View className="mt-6">
             <Card>
+              <StatusRow label={t("hosts.status.label")} status={status} value={statusValue} />
+              <RowDivider />
               <DetailRow label={t("hostDetail.user")} value={host.user} />
               <RowDivider />
               <DetailRow label={t("hostDetail.address")} value={host.addr} />

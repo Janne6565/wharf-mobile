@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/store/authSlice";
+import probesReducer from "@/store/probesSlice";
 import projectsReducer from "@/store/projectsSlice";
 import settingsReducer from "@/store/settingsSlice";
 import syncReducer from "@/store/syncSlice";
@@ -16,6 +17,7 @@ export const store = configureStore({
     vault: vaultReducer,
     sync: syncReducer,
     projects: projectsReducer,
+    probes: probesReducer,
     toast: toastReducer,
   },
 });

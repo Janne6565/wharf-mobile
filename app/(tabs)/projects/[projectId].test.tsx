@@ -14,6 +14,9 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
   useLocalSearchParams: () => ({ projectId: "p1" }),
+  // The detail screen probes its hosts on focus; a no-op keeps these tests focused
+  // on members/invites (probing is covered in useHostProbes.test).
+  useFocusEffect: () => {},
 }));
 
 const mockGetProject = jest.fn();

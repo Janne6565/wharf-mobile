@@ -7,10 +7,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { getHttpStatus } from "@/api/httpError";
 import { createInvite, getProject, revokeInvite } from "@/api/wharf";
+import type { HostStatus } from "@/components";
+import { type ProbeTarget, useHostProbes } from "@/features/hosts/useHostProbes";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { showToast } from "@/store/toastSlice";
 import { runProjectsSync } from "@/sync/projectsEngine";
@@ -40,6 +42,19 @@ export function useProjectDetailLogic() {
   );
   const currentUserId = useAppSelector((state) => state.auth.user?.id);
   const projectsLoaded = useAppSelector((state) => state.projects.loaded);
+  const probeResults = useAppSelector((state) => state.probes.results);
+
+  // Probe this project's hosts for the status dot when the screen is focused.
+  const hosts = project?.hosts ?? [];
+  const probeTargets: readonly ProbeTarget[] = useMemo(
+    () => hosts.map((host) => ({ id: host.id, host: host.addr, port: host.port })),
+    [hosts],
+  );
+  useHostProbes(probeTargets);
+  const hostStatus = useCallback(
+    (hostId: string): HostStatus => probeResults[hostId]?.status ?? "unknown",
+    [probeResults],
+  );
 
   const detailKey = ["project", projectId] as const;
   const detailQuery = useQuery({
@@ -118,7 +133,8 @@ export function useProjectDetailLogic() {
 
   return {
     project,
-    hosts: project?.hosts ?? [],
+    hosts,
+    hostStatus,
     members: detailQuery.data?.members ?? [],
     invites: detailQuery.data?.invites ?? [],
     currentUserId,

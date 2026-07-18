@@ -8,6 +8,9 @@ import HostsScreen from "./index";
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
+  // The host list runs a reachability sweep on focus; a no-op keeps these list
+  // tests focused on grouping/search (probing is covered in useHostProbes.test).
+  useFocusEffect: () => {},
 }));
 
 const HOSTS = [

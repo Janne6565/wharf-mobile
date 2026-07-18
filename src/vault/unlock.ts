@@ -17,6 +17,7 @@ import { getVault } from "@/api/wharf";
 import { clearMasterPassword, setMasterPassword } from "@/auth/masterSecret";
 import { CryptoError, fromBase64, unlockVaultWithDek, unlockWithPassword } from "@/crypto";
 import { store } from "@/store";
+import { probesReset } from "@/store/probesSlice";
 import { projectsReset } from "@/store/projectsSlice";
 import { setBiometricEnrolled, vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import { establishSyncBaseline } from "@/sync/deps";
@@ -147,4 +148,5 @@ export function lockVault(): void {
   clearMasterPassword();
   store.dispatch(vaultLocked());
   store.dispatch(projectsReset());
+  store.dispatch(probesReset());
 }
