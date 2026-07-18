@@ -11,15 +11,24 @@ import {
   SearchField,
   SectionLabel,
 } from "@/components";
-import { type HostSectionData, useHostsLogic } from "@/features/hosts/useHostsLogic";
+import { HostActionSheet } from "@/features/hosts/HostActionSheet";
+import { MoveToProjectSheet } from "@/features/hosts/MoveToProjectSheet";
+import { useHostActionsLogic } from "@/features/hosts/useHostActionsLogic";
+import {
+  type HostRowData,
+  type HostSectionData,
+  useHostsLogic,
+} from "@/features/hosts/useHostsLogic";
 import { SyncStatusBanner } from "@/features/syncStatus/SyncStatusBanner";
 
 function HostSection({
   section,
   onOpenHost,
+  onLongPressHost,
 }: {
   readonly section: HostSectionData;
   readonly onOpenHost: (hostId: string, projectId?: string) => void;
+  readonly onLongPressHost: (host: HostRowData) => void;
 }) {
   const { t } = useTranslation();
   if (section.hosts.length === 0) {
@@ -39,6 +48,7 @@ function HostSection({
               status={host.status}
               rttMs={host.rttMs}
               onPress={() => onOpenHost(host.id, host.projectId)}
+              onLongPress={() => onLongPressHost(host)}
             />
           </Fragment>
         ))}
@@ -60,6 +70,18 @@ export default function HostsScreen() {
   const { t } = useTranslation();
   const { sections, query, setQuery, openHost, openAddHost, hasHosts, hasMatches } =
     useHostsLogic();
+  const actions = useHostActionsLogic();
+
+  const onLongPressHost = (host: HostRowData) =>
+    actions.openMenu({ id: host.id, name: host.name, projectId: host.projectId });
+
+  const onMenuDelete = () =>
+    actions.confirmDelete({
+      title: t("hostForm.deleteConfirmTitle"),
+      body: t("hostForm.deleteConfirmBody", { name: actions.menuHost?.name ?? "" }),
+      confirm: t("hostForm.deleteConfirm"),
+      cancel: t("hostForm.deleteCancel"),
+    });
 
   return (
     <ScreenContainer>
@@ -77,9 +99,31 @@ export default function HostsScreen() {
         <EmptyState title={t("hosts.noMatches")} />
       ) : (
         sections.map((section) => (
-          <HostSection key={section.key} section={section} onOpenHost={openHost} />
+          <HostSection
+            key={section.key}
+            section={section}
+            onOpenHost={openHost}
+            onLongPressHost={onLongPressHost}
+          />
         ))
       )}
+      <HostActionSheet
+        visible={actions.actionsVisible}
+        onClose={actions.closeAll}
+        hostName={actions.menuHost?.name ?? ""}
+        isProjectHost={Boolean(actions.menuHost?.projectId)}
+        onConnect={actions.connect}
+        onEdit={actions.edit}
+        onMove={actions.openMovePicker}
+        onDelete={onMenuDelete}
+      />
+      <MoveToProjectSheet
+        visible={actions.moveVisible}
+        onClose={actions.closeAll}
+        projects={actions.keyedProjects}
+        movingProjectId={actions.movingProjectId}
+        onSelect={actions.moveTo}
+      />
     </ScreenContainer>
   );
 }

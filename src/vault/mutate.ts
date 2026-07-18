@@ -155,6 +155,44 @@ export function deleteHostFromPayload(payload: Uint8Array, id: string): Uint8Arr
   return serialize(doc, next);
 }
 
+// extractRawHostFromPayload returns a deep copy of the RAW host object with id —
+// carrying ALL its stored fields (password, keyPath, tags, and any field a newer
+// TUI adds), not the stripped typed view — so a "move to project" can re-home the
+// host without losing its secrets. A JSON round-trip detaches the copy from the
+// source payload's parsed tree. Throws not-found when the id is absent.
+export function extractRawHostFromPayload(
+  payload: Uint8Array,
+  id: string,
+): Record<string, unknown> {
+  const { hosts } = parse(payload);
+  const host = hosts.find((h) => h.id === id);
+  if (!host) {
+    throw new HostMutationError("not-found");
+  }
+  return JSON.parse(JSON.stringify(host)) as Record<string, unknown>;
+}
+
+// addRawHostToPayload appends an already-formed raw host (from
+// extractRawHostFromPayload) to a document's hosts, preserving every other doc
+// field and tolerating hosts:null/absent (a TUI-written empty project). Throws
+// name-duplicate when the doc already holds a host with the same trimmed,
+// case-insensitive name. Unlike addHostToPayload it assigns no id/source/authMethod
+// — the host keeps its own, so a move is lossless and probe results (keyed by id)
+// stay valid.
+export function addRawHostToPayload(
+  payload: Uint8Array,
+  host: Record<string, unknown>,
+): Uint8Array {
+  const { doc, hosts } = parse(payload);
+  const name = typeof host.name === "string" ? host.name.trim().toLowerCase() : "";
+  for (const existing of hosts) {
+    if (typeof existing.name === "string" && existing.name.trim().toLowerCase() === name) {
+      throw new HostMutationError("name-duplicate");
+    }
+  }
+  return serialize(doc, [...hosts, host]);
+}
+
 // setHostPasswordInPayload stores a per-host password on the host with id and
 // switches its authMethod to "password" — exactly what the TUI's "remember this
 // password" (ctrl+r) does. Every other stored field (keyPath, source, tags,

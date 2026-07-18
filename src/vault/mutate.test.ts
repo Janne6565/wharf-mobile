@@ -1,6 +1,8 @@
 import {
   addHostToPayload,
+  addRawHostToPayload,
   deleteHostFromPayload,
+  extractRawHostFromPayload,
   type HostInput,
   type HostMutationError,
   setHostPasswordInPayload,
@@ -176,6 +178,84 @@ describe("setHostPasswordInPayload", () => {
   it("throws not-found for an unknown id", () => {
     expect(() => setHostPasswordInPayload(KEY_DOC, "zzz", "pw")).toThrow(
       expect.objectContaining({ code: "not-found" }),
+    );
+  });
+});
+
+describe("extractRawHostFromPayload", () => {
+  it("returns a deep copy carrying the stored password and every other field", () => {
+    const KEY_DOC = enc(
+      JSON.stringify({
+        schema: 2,
+        hosts: [
+          {
+            id: "bbb",
+            name: "keyhost",
+            user: "deniz",
+            addr: "prod.io",
+            port: 22,
+            authMethod: "password",
+            password: "s3cret",
+            keyPath: "~/.ssh/id_ed25519",
+            source: "ssh_config",
+            tags: ["prod"],
+            futureField: { nested: true },
+          },
+        ],
+      }),
+    );
+    const host = extractRawHostFromPayload(KEY_DOC, "bbb");
+    expect(host).toEqual({
+      id: "bbb",
+      name: "keyhost",
+      user: "deniz",
+      addr: "prod.io",
+      port: 22,
+      authMethod: "password",
+      password: "s3cret",
+      keyPath: "~/.ssh/id_ed25519",
+      source: "ssh_config",
+      tags: ["prod"],
+      futureField: { nested: true },
+    });
+  });
+
+  it("throws not-found for an unknown id", () => {
+    expect(() => extractRawHostFromPayload(DOC, "zzz")).toThrow(
+      expect.objectContaining({ code: "not-found" }),
+    );
+  });
+});
+
+describe("addRawHostToPayload", () => {
+  const rawHost = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id: "moved",
+    name: "web",
+    user: "deploy",
+    addr: "web.io",
+    port: 22,
+    authMethod: "password",
+    password: "s3cret",
+    ...over,
+  });
+
+  it("appends to a hosts:null doc, preserving the doc schema and the host's password", () => {
+    const empty = enc(JSON.stringify({ schema: 1, hosts: null }));
+    const doc = parse(addRawHostToPayload(empty, rawHost()));
+    expect(doc.schema).toBe(1);
+    expect(doc.hosts).toHaveLength(1);
+    expect(doc.hosts[0]).toEqual(rawHost());
+    expect(doc.hosts[0].password).toBe("s3cret");
+  });
+
+  it("appends alongside existing hosts, keeping the id it was given", () => {
+    const doc = parse(addRawHostToPayload(DOC, rawHost({ name: "fresh" })));
+    expect(doc.hosts.map((h: { id: string }) => h.id)).toEqual(["aaa", "moved"]);
+  });
+
+  it("throws name-duplicate for a case-insensitive name clash", () => {
+    expect(() => addRawHostToPayload(DOC, rawHost({ name: "EXISTING" }))).toThrow(
+      expect.objectContaining({ code: "name-duplicate" }),
     );
   });
 });

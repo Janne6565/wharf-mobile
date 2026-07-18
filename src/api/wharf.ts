@@ -37,6 +37,10 @@ export const getCurrentUser = usersApi.getCurrentUser;
 // delete) and self-leave ARE surfaced (see below).
 export const listProjects = projectsApi.listProjects;
 export const getProjectVault = projectsApi.getProjectVault;
+// The first project-vault WRITE mobile surfaces (M6): needed by move-host-to-project
+// (@/sync/projectVaultWrite), a read-modify-write of the fetched project blob under
+// optimistic concurrency. DEK rotation + member removal stay out of scope by design.
+export const updateProjectVault = projectsApi.updateProjectVault;
 export const getProject = projectsApi.getProject;
 export const updatePublicKey = usersApi.updatePublicKey;
 export const getMyInvites = usersApi.getMyInvites;
