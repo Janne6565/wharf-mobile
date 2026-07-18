@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ e2916b0.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ b25c15c.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -188,8 +188,23 @@ invite by email, roles (owner/admin/member); private keys are never shared.
   **Nothing is persisted** — deliberate scope decision: no vault schema change,
   no web/mobile impact; last-used spec per host is prefilled in-memory only.
   Bind port 0 = auto-pick, resolved port surfaced in the toast/overlay. Header
-  shows a `⇄ n` chip; quit confirm counts tunnels. Roadmap next: (nothing
-  queued).
+  shows a `⇄ n` chip; quit confirm counts tunnels. **Vault-synced SSH keys W1 built (2026-07-19,** unpushed): store schema 3
+  (`keys[]`, keyfile bytes verbatim b64, opt-in; old builds hard-error on v3 —
+  flag day like v2), keys tab merges local+vault keys (fingerprint-matched,
+  synced/vault badges, `s` sync / `u` unsync-confirm, keygen sync toggle),
+  sshx key mode offers vault keys after agent/keyfile with per-key skip-not-
+  abort passphrase prompts; password mode never offers keys. Design:
+  wharf-mobile `docs/KEYSYNC.md`. **W2-W4 built same day** (all unpushed):
+  mobile engine key auth (Connect gains authMethod/keysJSON; key mode = vault
+  keys → password fallback → KI, a DELIBERATE deviation from TUI key mode
+  since mobile has no agent/keyfiles; new prompt kind "passphrase", never
+  remembered; xcframework rebuilt → dev-client rebuild needed), mobile app
+  wiring (key metadata in Redux with material stripped like passwords,
+  transient keySecret read at connect, Keys tab lists synced keys w/ OpenSSH
+  fingerprints), cross-client keys-document-fixture.json (Go-generated,
+  byte-identical in mobile+web; proves parse/fingerprint parity + web
+  preservation), backend README threat-model note. Pending: on-device verify
+  vs a key-only sshd. Roadmap next: (nothing queued).
 - **wharf-backend:** **v1 auth/vault/pairing API done** (2026-07-14): register/login/
   refresh (COOKIE|DIRECT token modes), recovery verify/reset (rotates code, bumps
   `tokenVersion` to revoke all sessions), device-code issue/exchange (one-time,

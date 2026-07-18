@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: technologies/REACT.md @ e2916b0.
+<!-- AUTO-SYNCED from agents KB: technologies/REACT.md @ b25c15c.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # React Rules
