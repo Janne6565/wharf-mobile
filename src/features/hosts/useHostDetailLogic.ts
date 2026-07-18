@@ -28,7 +28,12 @@ export function useHostDetailLogic() {
     projectId?: string;
   }>();
   const router = useRouter();
-  const segments = useSegments();
+  // Explicitly widen to a plain string array before indexing: this is deliberate
+  // because CI typechecks without the generated typed-routes file
+  // (.expo/types/router.d.ts is gitignored), and its absence makes expo-router's
+  // fallback types return useSegments() as a one-element tuple `[string]`, so
+  // `segments[1]` would fail with TS2493.
+  const segments: string[] = useSegments();
 
   const personalHost = useAppSelector((state) => state.vault.hosts.find((h) => h.id === hostId));
   const project = useAppSelector((state) =>
