@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 1903ab1.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ c1e5367.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -47,6 +47,16 @@ only ever holds ciphertext.
     be installed separately (a second copy would be a different context object
     and the padding would silently read 0). Android/older iOS keep the solid
     `shellRaised` bar unchanged.
+    **Host reachability probes (2026-07-18):** TUI-parity status dots. Stateless
+    `Probe(host, port, timeoutMs)` in the gomobile engine (TCP dial → RTT ms or
+    -1; xcframework rebuilt), bridged through wharf-ssh; `probesSlice` holds
+    ephemeral results (cleared on vault lock), `useHostProbes` sweeps on screen
+    focus throttled to 30s, JS-side classification (>750 ms degraded / 3 s
+    timeout). 4-state StatusDot (ok/warn/danger/muted) on Hosts tab + project
+    detail + a status-with-RTT row on host detail. Probe errors (incl. old dev
+    client without the native fn) leave the dot grey. Same commit batch: terminal
+    key accessory row bar chrome moved onto the ScrollView (content container is
+    only keycap-wide, bar looked ~80% width) with keycaps spread edge-to-edge.
   - github.com/Janne6565/wharf-deployment — Kustomize base + single `main` overlay
     (merge-to-main = prod deploy), ArgoCD app wired via cluster-deployment. Exists.
 - **Local:** clone the repo(s) above into `~/projects/wharf/<repo-name>/` (multi-repo, one
@@ -144,7 +154,17 @@ invite by email, roles (owner/admin/member); private keys are never shared.
   lock. Opt-in live E2E via `WHARF_E2E_BASE`. **Projects tab is real**
   (2026-07-16): store schema v2 identity, per-project WHARFP sync with offline blob
   cache, invites/finalize/rotation — see the Projects entry at the top of Status.
-  Roadmap next: port forwarding.
+  **Port forwarding done (2026-07-18):** k9s-style ephemeral tunnels — `f` on a
+  hovered host (personal or project) opens a small form (kind -L/-R/-D, bind,
+  target; dynamic = built-in CONNECT-only SOCKS5), `F` lists active forwards
+  (`x` closes). Each forward runs standalone on its **own SSH connection**
+  (`internal/sshx/forward.go`, shared `connect()` extracted from Dial), so it
+  survives session detach/close; ends on close/conn-death (`ForwardEndedMsg`).
+  **Nothing is persisted** — deliberate scope decision: no vault schema change,
+  no web/mobile impact; last-used spec per host is prefilled in-memory only.
+  Bind port 0 = auto-pick, resolved port surfaced in the toast/overlay. Header
+  shows a `⇄ n` chip; quit confirm counts tunnels. Roadmap next: (nothing
+  queued).
 - **wharf-backend:** **v1 auth/vault/pairing API done** (2026-07-14): register/login/
   refresh (COOKIE|DIRECT token modes), recovery verify/reset (rotates code, bumps
   `tokenVersion` to revoke all sessions), device-code issue/exchange (one-time,

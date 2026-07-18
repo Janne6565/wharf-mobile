@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: technologies/REACT.md @ 1903ab1.
+<!-- AUTO-SYNCED from agents KB: technologies/REACT.md @ c1e5367.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # React Rules
@@ -388,6 +388,13 @@ build.
 
 **DO:**
 - Co-locate test files with the files they test, named `<filename>.test.ts(x)`.
+  **Exception (expo-router):** never place test files inside the route directory
+  (`app/`) — the typed-routes generator scans `app/` in Node *without* Metro's
+  blockList, and a co-located `_layout.test.tsx` is misread as a group layout,
+  silently collapsing that group's routes out of `.expo/types/router.d.ts`
+  (typecheck then fails on every `/(group)/...` path). Put route-screen tests in
+  `src/` next to the feature they exercise (e.g. `src/features/hosts/
+  HostsScreen.test.tsx` importing the screen from `app/` relatively).
 - Use `renderHook()` from `@testing-library/react` for testing logic hooks.
 - Wrap Redux-connected hooks with a store provider utility (e.g. `makeWrapper(preloadedState)`).
 - Use `vi.mock(...)` for module mocking and `vi.fn()` / `vi.mocked()` for mock functions.
