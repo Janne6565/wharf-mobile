@@ -1,3 +1,4 @@
+import type { SshConnectOptions, SshSecretPromptEvent, SshVaultKeyRef } from "./contract";
 import { parseSshErrorCode, SSH_ERROR_CODES } from "./contract";
 
 describe("parseSshErrorCode", () => {
@@ -36,5 +37,63 @@ describe("parseSshErrorCode", () => {
     expect(parseSshErrorCode("")).toBe("unknown");
     expect(parseSshErrorCode("boom")).toBe("unknown");
     expect(parseSshErrorCode("Error: something")).toBe("unknown");
+  });
+});
+
+describe("SshSecretPromptEvent kinds", () => {
+  it("accepts the key-mode 'passphrase' kind alongside the password/ki kinds", () => {
+    const kinds: SshSecretPromptEvent["kind"][] = [
+      "password",
+      "password_retry",
+      "ki",
+      "passphrase",
+    ];
+    // The prompt text for a passphrase is the key name; echo is always false.
+    const ev: SshSecretPromptEvent = {
+      promptId: "p1",
+      sessionId: "s1",
+      kind: "passphrase",
+      prompt: "id_ed25519",
+      echo: false,
+    };
+    expect(kinds).toContain(ev.kind);
+    expect(ev.prompt).toBe("id_ed25519");
+  });
+});
+
+describe("SshConnectOptions key-mode fields", () => {
+  const base = {
+    sessionId: "s1",
+    host: "example.com",
+    port: 22,
+    user: "root",
+    storedPassword: "",
+    termType: "xterm-256color",
+    cols: 80,
+    rows: 24,
+    timeoutMs: 5000,
+    knownHostsPath: "/tmp/known_hosts",
+  } as const;
+
+  it("stays valid without the optional authMethod/keys (legacy callers)", () => {
+    const opts: SshConnectOptions = { ...base };
+    expect(opts.authMethod).toBeUndefined();
+    expect(opts.keys).toBeUndefined();
+  });
+
+  it("carries authMethod 'key' and a list of vault key refs", () => {
+    const keys: readonly SshVaultKeyRef[] = [
+      { name: "id_ed25519", materialB64: "QUJD" },
+      { name: "work_key", materialB64: "REVG" },
+    ];
+    const opts: SshConnectOptions = { ...base, authMethod: "key", keys };
+    expect(opts.authMethod).toBe("key");
+    expect(opts.keys).toHaveLength(2);
+    expect(opts.keys?.[0]).toEqual({ name: "id_ed25519", materialB64: "QUJD" });
+  });
+
+  it("accepts an explicit 'password' authMethod", () => {
+    const opts: SshConnectOptions = { ...base, authMethod: "password" };
+    expect(opts.authMethod).toBe("password");
   });
 });

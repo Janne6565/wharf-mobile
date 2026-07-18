@@ -46,6 +46,11 @@ struct SshConnectOptionsRecord: Record {
   @Field var rows: Int = 0
   @Field var timeoutMs: Int = 0
   @Field var knownHostsPath: String = ""
+  // Key-mode auth. Defaulted so an older JS bundle (which sends neither field)
+  // stays safe: "password" keeps the legacy password-first chain, and "" is an
+  // empty keysJSON array. The JS wrapper serializes `keys` into `keysJson`.
+  @Field var authMethod: String = "password"
+  @Field var keysJson: String = ""
 }
 
 // SshCallbackHandler implements the engine's Callbacks protocol. It captures a
@@ -137,6 +142,7 @@ public class WharfSshModule: Module {
           try engine.connect(
             options.sessionId, host: options.host, port: options.port, user: options.user,
             storedPassword: options.storedPassword, termType: options.termType,
+            authMethod: options.authMethod, keysJSON: options.keysJson,
             cols: options.cols, rows: options.rows, timeoutMs: options.timeoutMs)
           promise.resolve(nil)
         } catch {

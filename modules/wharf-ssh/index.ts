@@ -23,10 +23,19 @@ import type {
 
 export * from "./contract";
 
+// The shape the native connect Record expects: the flat SshConnectOptions
+// fields minus `keys`/`authMethod`, plus their serialized native forms
+// `keysJson` (a JSON string) and a non-optional `authMethod`. Keeping the
+// array→string marshaling here means the native Record only ever sees strings.
+type WharfSshNativeConnectOptions = Omit<SshConnectOptions, "keys" | "authMethod"> & {
+  authMethod: string;
+  keysJson: string;
+};
+
 // The native module both resolves promises and emits the four events. Expo's
 // NativeModule exposes `addListener(eventName, listener): EventSubscription`.
 interface WharfSshNative {
-  connect(opts: SshConnectOptions): Promise<void>;
+  connect(opts: WharfSshNativeConnectOptions): Promise<void>;
   probe(host: string, port: number, timeoutMs: number): Promise<number>;
   cancelConnect(sessionId: string): Promise<void>;
   write(sessionId: string, dataB64: string): Promise<void>;
@@ -45,7 +54,15 @@ interface WharfSshNative {
 const native = requireNativeModule<WharfSshNative>("WharfSsh");
 
 export function connect(opts: SshConnectOptions): Promise<void> {
-  return native.connect(opts);
+  const { keys, authMethod, ...rest } = opts;
+  // Default authMethod to "password" (mobile's legacy default) and serialize the
+  // optional keys array to the JSON string the native Record parses. keys ?? []
+  // yields "[]" when none, which the engine reads as "no synced keys".
+  return native.connect({
+    ...rest,
+    authMethod: authMethod ?? "password",
+    keysJson: JSON.stringify(keys ?? []),
+  });
 }
 
 export function probe(host: string, port: number, timeoutMs: number): Promise<number> {

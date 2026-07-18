@@ -42,9 +42,23 @@ export function parseSshErrorCode(raw: string): SshErrorCode {
   return best?.code ?? "unknown";
 }
 
-// Options for opening an interactive shell. Mobile auth is password +
-// keyboard-interactive ONLY (no key mode on mobile, per product decision): a host
-// synced from the TUI with authMethod "key" simply gets a password prompt.
+// One synced private key handed to the engine for key-mode auth: a display
+// name (used as the passphrase-prompt label) plus the verbatim keyfile bytes
+// (OpenSSH/PEM armor) as base64.
+export interface SshVaultKeyRef {
+  readonly name: string;
+  readonly materialB64: string;
+}
+
+// Options for opening an interactive shell. Two auth modes, selected by
+// `authMethod`:
+//   "password" (default; mobile's legacy behavior): password +
+//     keyboard-interactive only — `keys` are never offered.
+//   "key": the synced vault `keys` are offered as public-key auth BEFORE the
+//     password + keyboard-interactive fallbacks. The password fallback in key
+//     mode is a deliberate deviation from the TUI (which never offers a password
+//     in key mode): mobile has no agent or on-disk key files, so a key-mode host
+//     whose synced keys are all unusable must still be reachable via a password.
 export interface SshConnectOptions {
   readonly sessionId: string;
   readonly host: string;
@@ -58,6 +72,12 @@ export interface SshConnectOptions {
   readonly rows: number;
   readonly timeoutMs: number;
   readonly knownHostsPath: string;
+  // Auth mode. Optional so existing callers keep compiling; the native wrapper
+  // defaults an omitted value to "password" (mobile's legacy default).
+  readonly authMethod?: "key" | "password";
+  // Synced vault keys offered in key mode; ignored in password mode. Optional so
+  // existing callers keep compiling (treated as none when omitted).
+  readonly keys?: readonly SshVaultKeyRef[];
 }
 
 // Remote shell output for a session (base64 of the raw byte stream).
@@ -84,12 +104,14 @@ export interface SshHostKeyPromptEvent {
 
 // A secret request. "password"/"password_retry" is the login password (retry =
 // the previous one was rejected); "ki" is a keyboard-interactive challenge whose
-// `prompt` text comes from the server and whose `echo` controls masking. Resolve
-// with resolveSecretPrompt(promptId, secretB64 | null) — null cancels.
+// `prompt` text comes from the server and whose `echo` controls masking;
+// "passphrase" is the passphrase for a synced vault key, where `prompt` is the
+// key name (never offer a "remember" toggle for it). Resolve with
+// resolveSecretPrompt(promptId, secretB64 | null) — null cancels.
 export interface SshSecretPromptEvent {
   readonly promptId: string;
   readonly sessionId: string;
-  readonly kind: "password" | "password_retry" | "ki";
+  readonly kind: "password" | "password_retry" | "ki" | "passphrase";
   readonly prompt: string;
   readonly echo: boolean;
 }

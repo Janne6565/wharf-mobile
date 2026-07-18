@@ -137,6 +137,10 @@ function subscribe<K extends keyof WharfSshEventMap>(
 }
 
 export function connect(opts: SshConnectOptions): Promise<void> {
+  // Recorded verbatim, so a test can assert on any field the app passed —
+  // including the optional key-mode fields `authMethod` and `keys`. Unlike the
+  // native wrapper (which serializes `keys` and defaults `authMethod`), the fake
+  // sits at the WharfSshApi seam and keeps the options exactly as received.
   __calls.connect.push(opts);
   return new Promise<void>((resolve, reject) => {
     connectController = { resolve, reject };

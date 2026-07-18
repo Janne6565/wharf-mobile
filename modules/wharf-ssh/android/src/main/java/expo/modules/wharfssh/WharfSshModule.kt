@@ -47,6 +47,11 @@ class SshConnectOptionsRecord : Record {
   @Field var rows: Int = 0
   @Field var timeoutMs: Int = 0
   @Field var knownHostsPath: String = ""
+  // Key-mode auth. Defaulted so an older JS bundle (which sends neither field)
+  // stays safe: "password" keeps the legacy password-first chain, and "" is an
+  // empty keysJSON array. The JS wrapper serializes `keys` into `keysJson`.
+  @Field var authMethod: String = "password"
+  @Field var keysJson: String = ""
 }
 
 class WharfSshModule : Module() {
@@ -71,10 +76,14 @@ class WharfSshModule : Module() {
       // Run the BLOCKING connect off Expo's module thread (see file header).
       connectExecutor.execute {
         try {
+          // authMethod + keysJson are the key-mode params added to the engine's
+          // Connect; they resolve only against a rebuilt sshengine.aar (the aar is
+          // NDK-gated and not committed, so this file compiles once the engine is
+          // rebuilt locally — same gating as before, see libs/.gitignore).
           engine.connect(
             options.sessionId, options.host, options.port.toLong(), options.user,
-            options.storedPassword, options.termType, options.cols.toLong(),
-            options.rows.toLong(), options.timeoutMs.toLong())
+            options.storedPassword, options.termType, options.authMethod, options.keysJson,
+            options.cols.toLong(), options.rows.toLong(), options.timeoutMs.toLong())
           promise.resolve(null)
         } catch (e: Exception) {
           // Reject with the engine's message VERBATIM: it is a "<code>: <detail>"

@@ -14,7 +14,7 @@ const ptyBaud = 14400
 // the output pump, and registers the session under sessionID. ctx bounds the
 // whole dial+handshake+auth; once it returns nil the session runs until it
 // ends or is closed.
-func (e *Engine) dial(ctx context.Context, sessionID, host, addr, user, storedPassword, termType string, cols, rows int) (*sshSession, error) {
+func (e *Engine) dial(ctx context.Context, sessionID, host, addr, user, storedPassword, termType, authMethod string, keys []vaultKey, cols, rows int) (*sshSession, error) {
 	db, err := e.openKnownHosts()
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func (e *Engine) dial(ctx context.Context, sessionID, host, addr, user, storedPa
 
 	config := &ssh.ClientConfig{
 		User:              user,
-		Auth:              e.authMethods(ctx, sessionID, user, host, storedPassword),
+		Auth:              e.authMethods(ctx, sessionID, user, host, storedPassword, authMethod, keys),
 		HostKeyCallback:   e.hostKeyCallback(ctx, sessionID, db),
 		HostKeyAlgorithms: db.HostKeyAlgorithms(addr),
 	}

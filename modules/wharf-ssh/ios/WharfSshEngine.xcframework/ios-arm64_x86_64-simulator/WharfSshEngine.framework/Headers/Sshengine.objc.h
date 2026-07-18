@@ -86,6 +86,20 @@ silently on the first attempt; if the server rejects it, prompting continues
 via OnSecretPrompt with kind "password_retry" (total 1 silent + 3 prompted,
 versus 3 prompted when nothing is stored).
 
+authMethod selects the auth chain. "key" enables the synced-vault-key
+public-key method (parsed from keysJSON) BEFORE the password + keyboard-
+interactive fallbacks. ANY other value — including "" from older callers —
+keeps today's password-first behavior with keys never offered; note this
+legacy default is password, unlike the TUI where "" means key mode. The
+password fallback is offered even in key mode (a deliberate deviation from
+the TUI): mobile has no agent or on-disk keys, so a key-mode host with no
+usable synced key must still be reachable via a password.
+
+keysJSON is a JSON array of synced private keys,
+[{"name":"id_ed25519","materialB64":"<base64 keyfile bytes>"}]; "" or "[]"
+means none. Entries that fail JSON or base64 decoding are skipped, never
+fatal. keysJSON is ignored unless authMethod is "key".
+
 timeoutMs bounds TCP dial + handshake + auth as a whole; <= 0 means no
 deadline (the attempt can still be aborted with CancelConnect). Once the
 shell is up the only watchdog is the 30s keepalive loop.
@@ -94,7 +108,7 @@ A non-nil error's message is prefixed with a stable, parseable code:
 host_key_changed, host_key_rejected, auth_failed, canceled, timeout,
 network, or unknown, followed by ": " and detail.
  */
-- (BOOL)connect:(NSString* _Nullable)sessionID host:(NSString* _Nullable)host port:(long)port user:(NSString* _Nullable)user storedPassword:(NSString* _Nullable)storedPassword termType:(NSString* _Nullable)termType cols:(long)cols rows:(long)rows timeoutMs:(long)timeoutMs error:(NSError* _Nullable* _Nullable)error;
+- (BOOL)connect:(NSString* _Nullable)sessionID host:(NSString* _Nullable)host port:(long)port user:(NSString* _Nullable)user storedPassword:(NSString* _Nullable)storedPassword termType:(NSString* _Nullable)termType authMethod:(NSString* _Nullable)authMethod keysJSON:(NSString* _Nullable)keysJSON cols:(long)cols rows:(long)rows timeoutMs:(long)timeoutMs error:(NSError* _Nullable* _Nullable)error;
 /**
  * Resize updates the remote PTY window to cols x rows. It errors if the
 session is unknown or already closed.

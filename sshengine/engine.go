@@ -116,6 +116,20 @@ func NewEngine(knownHostsPath string, cb Callbacks) *Engine {
 // via OnSecretPrompt with kind "password_retry" (total 1 silent + 3 prompted,
 // versus 3 prompted when nothing is stored).
 //
+// authMethod selects the auth chain. "key" enables the synced-vault-key
+// public-key method (parsed from keysJSON) BEFORE the password + keyboard-
+// interactive fallbacks. ANY other value — including "" from older callers —
+// keeps today's password-first behavior with keys never offered; note this
+// legacy default is password, unlike the TUI where "" means key mode. The
+// password fallback is offered even in key mode (a deliberate deviation from
+// the TUI): mobile has no agent or on-disk keys, so a key-mode host with no
+// usable synced key must still be reachable via a password.
+//
+// keysJSON is a JSON array of synced private keys,
+// [{"name":"id_ed25519","materialB64":"<base64 keyfile bytes>"}]; "" or "[]"
+// means none. Entries that fail JSON or base64 decoding are skipped, never
+// fatal. keysJSON is ignored unless authMethod is "key".
+//
 // timeoutMs bounds TCP dial + handshake + auth as a whole; <= 0 means no
 // deadline (the attempt can still be aborted with CancelConnect). Once the
 // shell is up the only watchdog is the 30s keepalive loop.
@@ -123,7 +137,7 @@ func NewEngine(knownHostsPath string, cb Callbacks) *Engine {
 // A non-nil error's message is prefixed with a stable, parseable code:
 // host_key_changed, host_key_rejected, auth_failed, canceled, timeout,
 // network, or unknown, followed by ": " and detail.
-func (e *Engine) Connect(sessionID, host string, port int, user, storedPassword, termType string, cols, rows, timeoutMs int) error {
+func (e *Engine) Connect(sessionID, host string, port int, user, storedPassword, termType, authMethod, keysJSON string, cols, rows, timeoutMs int) error {
 	if port == 0 {
 		port = 22
 	}
@@ -160,7 +174,8 @@ func (e *Engine) Connect(sessionID, host string, port int, user, storedPassword,
 		e.mu.Unlock()
 	}()
 
-	_, err := e.dial(ctx, sessionID, host, addr, user, storedPassword, termType, cols, rows)
+	keys := parseVaultKeys(keysJSON)
+	_, err := e.dial(ctx, sessionID, host, addr, user, storedPassword, termType, authMethod, keys, cols, rows)
 	if err != nil {
 		return connectError(err, ctx.Err())
 	}

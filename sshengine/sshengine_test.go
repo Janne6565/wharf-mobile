@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"io"
 	"net"
 	"os"
@@ -21,9 +24,10 @@ import (
 )
 
 const (
-	testPassword = "hunter2"
-	testUser     = "tester"
-	testKICode   = "123456"
+	testPassword   = "hunter2"
+	testUser       = "tester"
+	testKICode     = "123456"
+	testPassphrase = "keypass"
 )
 
 // --- in-process sshd -------------------------------------------------------
@@ -87,6 +91,63 @@ func startKIServer(t *testing.T, expected string, handler gliderssh.Handler) *te
 			return err == nil && len(ans) == 1 && ans[0] == expected
 		},
 	})
+}
+
+// startPublicKeyServer authenticates only by public key, accepting exactly the
+// authorized key. It advertises no password/KI method, so a client in password
+// mode has nothing to offer it.
+func startPublicKeyServer(t *testing.T, authorized gossh.PublicKey, handler gliderssh.Handler) *testServer {
+	return serve(t, &gliderssh.Server{
+		Handler: handler,
+		PublicKeyHandler: func(_ gliderssh.Context, key gliderssh.PublicKey) bool {
+			return gliderssh.KeysEqual(key, authorized)
+		},
+	})
+}
+
+// genKeyPair makes an ed25519 key pair, returning the private key as OpenSSH-PEM
+// material (passphrase-encrypted when pass != "") and its ssh.PublicKey.
+func genKeyPair(t *testing.T, pass string) (material []byte, pub gossh.PublicKey) {
+	t.Helper()
+	pubKey, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	var block *pem.Block
+	if pass == "" {
+		block, err = gossh.MarshalPrivateKey(priv, "")
+	} else {
+		block, err = gossh.MarshalPrivateKeyWithPassphrase(priv, "", []byte(pass))
+	}
+	if err != nil {
+		t.Fatalf("marshal private key: %v", err)
+	}
+	sshPub, err := gossh.NewPublicKey(pubKey)
+	if err != nil {
+		t.Fatalf("ssh public key: %v", err)
+	}
+	return pem.EncodeToMemory(block), sshPub
+}
+
+// keyEntry mirrors one element of the keysJSON array Connect parses.
+type keyEntry struct {
+	Name        string `json:"name"`
+	MaterialB64 string `json:"materialB64"`
+}
+
+// keysJSONStr marshals entries into the keysJSON string Connect expects.
+func keysJSONStr(t *testing.T, entries ...keyEntry) string {
+	t.Helper()
+	b, err := json.Marshal(entries)
+	if err != nil {
+		t.Fatalf("marshal keysJSON: %v", err)
+	}
+	return string(b)
+}
+
+// b64 base64-encodes key material for a keyEntry.
+func b64(material []byte) string {
+	return base64.StdEncoding.EncodeToString(material)
 }
 
 // startSilentListener accepts TCP connections but never speaks SSH, so the
@@ -280,9 +341,16 @@ func newEngineAt(t *testing.T, cb *fakeCB, khPath string) *Engine {
 	return eng
 }
 
-// connect dials ts with a 5s deadline and standard PTY size.
+// connect dials ts in password mode (authMethod "", no synced keys) with a 5s
+// deadline and standard PTY size.
 func connect(eng *Engine, id string, ts *testServer, storedPassword string) error {
-	return eng.Connect(id, ts.host, ts.port, testUser, storedPassword, "xterm-256color", 80, 24, 5000)
+	return eng.Connect(id, ts.host, ts.port, testUser, storedPassword, "xterm-256color", "", "", 80, 24, 5000)
+}
+
+// connectKey dials ts in key mode ("key") with the given keysJSON, no stored
+// password, a 5s deadline and standard PTY size.
+func connectKey(eng *Engine, id string, ts *testServer, keysJSON string) error {
+	return eng.Connect(id, ts.host, ts.port, testUser, "", "xterm-256color", "key", keysJSON, 80, 24, 5000)
 }
 
 func waitFor(t *testing.T, d time.Duration, what string, cond func() bool) {
@@ -577,7 +645,7 @@ func TestCancelConnectDuringPrompt(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- eng.Connect("s1", ts.host, ts.port, testUser, "", "xterm-256color", 80, 24, 5000)
+		errCh <- eng.Connect("s1", ts.host, ts.port, testUser, "", "xterm-256color", "", "", 80, 24, 5000)
 	}()
 
 	// Wait until the password prompt is outstanding, then cancel.
@@ -607,12 +675,156 @@ func TestConnectTimeout(t *testing.T) {
 	ts := startSilentListener(t)
 
 	// 300ms deadline against a server that never completes the handshake.
-	err := eng.Connect("s1", ts.host, ts.port, testUser, "", "xterm-256color", 80, 24, 300)
+	err := eng.Connect("s1", ts.host, ts.port, testUser, "", "xterm-256color", "", "", 80, 24, 300)
 	if err == nil {
 		eng.Close("s1")
 		t.Fatal("expected a timeout error")
 	}
 	if !strings.HasPrefix(err.Error(), codeTimeout+": ") {
 		t.Fatalf("error = %q, want %s prefix", err.Error(), codeTimeout)
+	}
+}
+
+// (a) key mode authenticates with an unencrypted synced key and raises no
+// secret prompt.
+func TestKeyModeUnencryptedKeyAuth(t *testing.T) {
+	cb := newFakeCB()
+	eng := newEngine(t, cb)
+	material, pub := genKeyPair(t, "")
+	ts := startPublicKeyServer(t, pub, echoHandler)
+
+	keys := keysJSONStr(t, keyEntry{Name: "id_ed25519", MaterialB64: b64(material)})
+	if err := connectKey(eng, "s1", ts, keys); err != nil {
+		t.Fatalf("key-mode connect: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s1") })
+
+	if n := cb.secretCount.Load(); n != 0 {
+		t.Fatalf("an unencrypted key must not prompt, got %d secret prompts", n)
+	}
+	if eng.get("s1") == nil {
+		t.Fatal("session not registered after key-mode connect")
+	}
+}
+
+// (b) an encrypted synced key raises a "passphrase" prompt carrying the key
+// name and authenticates once the right passphrase is supplied.
+func TestKeyModeEncryptedKeyPassphrase(t *testing.T) {
+	cb := newFakeCB()
+	cb.onSecret = func(f *fakeCB, ev secretEv) {
+		f.eng.ResolveSecretPrompt(ev.promptID, []byte(testPassphrase))
+	}
+	eng := newEngine(t, cb)
+	material, pub := genKeyPair(t, testPassphrase)
+	ts := startPublicKeyServer(t, pub, echoHandler)
+
+	keys := keysJSONStr(t, keyEntry{Name: "work_key", MaterialB64: b64(material)})
+	if err := connectKey(eng, "s1", ts, keys); err != nil {
+		t.Fatalf("key-mode connect with encrypted key: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s1") })
+
+	ev := <-cb.secretCh
+	if ev.kind != kindPassphrase {
+		t.Fatalf("prompt kind = %q, want %q", ev.kind, kindPassphrase)
+	}
+	if ev.prompt != "work_key" {
+		t.Fatalf("prompt text = %q, want the key name", ev.prompt)
+	}
+	if ev.echo {
+		t.Fatal("expected echo=false for a passphrase prompt")
+	}
+}
+
+// (c) a canceled passphrase on the first key skips it; auth still succeeds via
+// a second, unencrypted key.
+func TestKeyModeCanceledPassphraseSkipsToNextKey(t *testing.T) {
+	cb := newFakeCB()
+	// Cancel every secret prompt (there is only the key-1 passphrase); the
+	// unencrypted key 2 needs none.
+	cb.onSecret = func(f *fakeCB, ev secretEv) {
+		f.eng.ResolveSecretPrompt(ev.promptID, nil)
+	}
+	eng := newEngine(t, cb)
+	encMaterial, _ := genKeyPair(t, testPassphrase)      // key 1: encrypted, will be skipped
+	plainMaterial, plainPub := genKeyPair(t, "")         // key 2: unencrypted, authorized
+	ts := startPublicKeyServer(t, plainPub, echoHandler) // server trusts key 2 only
+
+	keys := keysJSONStr(t,
+		keyEntry{Name: "locked", MaterialB64: b64(encMaterial)},
+		keyEntry{Name: "open", MaterialB64: b64(plainMaterial)},
+	)
+	if err := connectKey(eng, "s1", ts, keys); err != nil {
+		t.Fatalf("key-mode connect should succeed via key 2: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s1") })
+
+	ev := <-cb.secretCh
+	if ev.kind != kindPassphrase {
+		t.Fatalf("expected a passphrase prompt for key 1, got kind %q", ev.kind)
+	}
+	if eng.get("s1") == nil {
+		t.Fatal("session not registered after falling through to key 2")
+	}
+}
+
+// (d) key mode with no usable keys falls through to the password prompt.
+func TestKeyModeNoKeysFallsBackToPassword(t *testing.T) {
+	cb := newFakeCB() // default onSecret answers testPassword
+	eng := newEngine(t, cb)
+	ts := startPasswordServer(t, testPassword, echoHandler)
+
+	if err := connectKey(eng, "s1", ts, "[]"); err != nil {
+		t.Fatalf("key-mode connect with no keys should fall back to password: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s1") })
+
+	if cb.secretCount.Load() == 0 {
+		t.Fatal("expected a password prompt when no synced key is usable")
+	}
+	ev := <-cb.secretCh
+	if ev.kind != kindPassword {
+		t.Fatalf("fallback prompt kind = %q, want %q", ev.kind, kindPassword)
+	}
+}
+
+// (e) malformed keysJSON and bad-base64 entries are skipped, not fatal: the
+// connect still proceeds (here to the password fallback).
+func TestKeyModeMalformedKeysSkipped(t *testing.T) {
+	cb := newFakeCB() // default onSecret answers testPassword
+	eng := newEngine(t, cb)
+	ts := startPasswordServer(t, testPassword, echoHandler)
+
+	// A single entry with undecodable base64 material — skipped, leaving no keys.
+	badEntry := keysJSONStr(t, keyEntry{Name: "broken", MaterialB64: "!!!not-base64!!!"})
+	if err := connectKey(eng, "s1", ts, badEntry); err != nil {
+		t.Fatalf("bad-base64 entry must be skipped, not fail the connect: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s1") })
+
+	// Wholly invalid JSON — parsed as no keys, again falling back to password.
+	if err := connectKey(eng, "s2", ts, "this is not json"); err != nil {
+		t.Fatalf("malformed keysJSON must be skipped, not fail the connect: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s2") })
+}
+
+// (f) password mode never offers a public key even when keys are supplied: a
+// pubkey-only server rejects the connect.
+func TestPasswordModeNeverOffersKey(t *testing.T) {
+	cb := newFakeCB() // answers testPassword, which the pubkey-only server ignores
+	eng := newEngine(t, cb)
+	material, pub := genKeyPair(t, "")
+	ts := startPublicKeyServer(t, pub, echoHandler) // trusts the key, but no password method
+
+	keys := keysJSONStr(t, keyEntry{Name: "id_ed25519", MaterialB64: b64(material)})
+	// authMethod "password" with keys present: the key must NOT be offered.
+	err := eng.Connect("s1", ts.host, ts.port, testUser, "", "xterm-256color", "password", keys, 80, 24, 5000)
+	if err == nil {
+		eng.Close("s1")
+		t.Fatal("password mode must not authenticate with a synced key")
+	}
+	if !strings.HasPrefix(err.Error(), codeAuthFailed+": ") {
+		t.Fatalf("error = %q, want %s prefix", err.Error(), codeAuthFailed)
 	}
 }
