@@ -22,6 +22,7 @@ import { useAccentColor } from "@/theme/useAccentColor";
 import { hostTarget, type VaultHost } from "@/vault/document";
 import { setHostPassword } from "@/vault/hostMutations";
 import { readStoredPassword } from "@/vault/hostSecret";
+import { readVaultKeyRefs } from "@/vault/keySecret";
 import {
   cancelConnect,
   close as closeSession,
@@ -218,6 +219,16 @@ export function useTerminalLogic() {
         return;
       }
 
+      // Auth mode mirrors the TUI: an explicit "password" host is password-only;
+      // everything else (mobile-created hosts default to "key"; legacy ""/absent)
+      // is key mode. In key mode the caller's synced personal vault keys are
+      // offered — for BOTH personal and project hosts, since project hosts use the
+      // caller's own keys (private keys are never shared). Password mode offers no
+      // keys. The stored password is still passed in key mode: the engine replays
+      // it as the password fallback when the synced keys are unusable.
+      const authMethod = target.authMethod === "password" ? "password" : "key";
+      const keys = authMethod === "key" ? readVaultKeyRefs() : undefined;
+
       try {
         await connect({
           sessionId,
@@ -230,6 +241,8 @@ export function useTerminalLogic() {
           rows: sizeRef.current.rows,
           timeoutMs: CONNECT_TIMEOUT_MS,
           knownHostsPath: knownHostsPath(),
+          authMethod,
+          ...(keys ? { keys } : {}),
         });
       } catch (error: unknown) {
         if (isCurrent(sessionId)) {
@@ -349,9 +362,11 @@ export function useTerminalLogic() {
       if (!prompt) {
         return;
       }
-      // canRemember is a constant true (both host kinds can persist); the ki guard
-      // is what keeps keyboard-interactive responses from ever being remembered.
-      if (prompt.kind !== "ki" && remember && canRemember) {
+      // canRemember is a constant true (both host kinds can persist). Only a login
+      // password is ever persisted — never a keyboard-interactive response and
+      // never a key passphrase (a passphrase is not a host secret in v1).
+      const isPassword = prompt.kind === "password" || prompt.kind === "password_retry";
+      if (isPassword && remember && canRemember) {
         rememberRef.current = secret;
       }
       void resolveSecretPrompt(prompt.promptId, encodeUtf8(secret));

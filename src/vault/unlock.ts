@@ -71,7 +71,7 @@ export async function ensureVaultBlob(): Promise<LocalBlob | null> {
 // compare — before the tabs mount and fire the first sync pass.
 async function publishUnlocked(payload: Uint8Array, version: number | null): Promise<void> {
   const document = parseVaultDocument(payload);
-  store.dispatch(vaultUnlocked({ hosts: document.hosts, version }));
+  store.dispatch(vaultUnlocked({ hosts: document.hosts, keys: document.keys, version }));
   await establishSyncBaseline(payload);
 }
 

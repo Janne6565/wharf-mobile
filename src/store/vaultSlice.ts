@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { VaultHost } from "@/vault/document";
+import type { VaultHost, VaultKeyMeta } from "@/vault/document";
 
 // Derived, non-secret vault state for the UI. The secret material (DEK, decrypted
 // payload, master password) lives ONLY in module memory (`src/vault/vaultSession`
@@ -17,6 +17,7 @@ export type VaultStatus = "locked" | "unlocked";
 interface VaultState {
   status: VaultStatus;
   hosts: StoredHost[];
+  keys: VaultKeyMeta[];
   version: number | null;
   biometricEnrolled: boolean;
 }
@@ -24,12 +25,14 @@ interface VaultState {
 const initialState: VaultState = {
   status: "locked",
   hosts: [],
+  keys: [],
   version: null,
   biometricEnrolled: false,
 };
 
 interface UnlockedPayload {
   readonly hosts: readonly VaultHost[];
+  readonly keys: readonly VaultKeyMeta[];
   readonly version: number | null;
 }
 
@@ -46,6 +49,13 @@ function toStoredHosts(hosts: readonly VaultHost[]): StoredHost[] {
   }));
 }
 
+// VaultKeyMeta has no nested arrays (only strings), so a shallow array copy into
+// a mutable array is enough for Immer — the reducers only ever replace the whole
+// list, never mutate an element in place.
+function toStoredKeys(keys: readonly VaultKeyMeta[]): VaultKeyMeta[] {
+  return [...keys];
+}
+
 const vaultSlice = createSlice({
   name: "vault",
   initialState,
@@ -53,17 +63,20 @@ const vaultSlice = createSlice({
     vaultUnlocked(state, action: PayloadAction<UnlockedPayload>) {
       state.status = "unlocked";
       state.hosts = toStoredHosts(action.payload.hosts);
+      state.keys = toStoredKeys(action.payload.keys);
       state.version = action.payload.version;
     },
-    // Refresh the decrypted host list without changing lock status (e.g. after a
-    // future sync pull). Kept minimal for M2 read-only use.
+    // Refresh the decrypted host + key lists without changing lock status (e.g.
+    // after a host mutation or a future sync pull).
     vaultDocumentUpdated(state, action: PayloadAction<UnlockedPayload>) {
       state.hosts = toStoredHosts(action.payload.hosts);
+      state.keys = toStoredKeys(action.payload.keys);
       state.version = action.payload.version;
     },
     vaultLocked(state) {
       state.status = "locked";
       state.hosts = [];
+      state.keys = [];
       state.version = null;
     },
     setBiometricEnrolled(state, action: PayloadAction<boolean>) {

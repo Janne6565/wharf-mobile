@@ -42,7 +42,7 @@ function primeSession() {
 describe("host mutations flow", () => {
   beforeEach(() => {
     store.dispatch(vaultLocked());
-    store.dispatch(vaultUnlocked({ hosts: [], version: 3 }));
+    store.dispatch(vaultUnlocked({ hosts: [], keys: [], version: 3 }));
     primeSession();
     jest.clearAllMocks();
   });

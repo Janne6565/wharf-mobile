@@ -124,7 +124,7 @@ async function adopt(remotePayload: Uint8Array, version: number): Promise<void> 
   await updateVaultMeta({ version, fingerprint: fingerprint(remotePayload) });
   updateVaultSessionPayload(remotePayload);
   const document = parseVaultDocument(remotePayload);
-  store.dispatch(vaultDocumentUpdated({ hosts: document.hosts, version }));
+  store.dispatch(vaultDocumentUpdated({ hosts: document.hosts, keys: document.keys, version }));
 }
 
 async function commit(version: number, fp: string): Promise<void> {

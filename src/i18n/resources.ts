@@ -221,15 +221,16 @@ const enCommon = {
   },
   keys: {
     title: "Keys",
-    emptyTitle: "No project identity yet",
+    emptyTitle: "Nothing synced yet",
     emptyBody:
-      "Open the Projects tab to create your encryption identity. It is generated on this device and synced through your vault.",
+      "Sync an SSH key with `s` on the Keys tab of the Wharf terminal, or open the Projects tab to create your encryption identity. Both sync through your vault.",
+    syncedTitle: "Synced keys",
     identityTitle: "Project identity",
     createdAt: "Created {{date}}",
     fingerprintLabel: "Fingerprint",
     copy: "Copy public key",
     sshNote:
-      "Your SSH keys never leave your devices — add and manage them in the Wharf terminal app.",
+      "SSH keys now sync through your vault. Sync a key with `s` on the Keys tab of the Wharf terminal app, then use it to connect from here.",
   },
   settings: {
     title: "Settings",
@@ -324,6 +325,9 @@ const enCommon = {
       passwordRetry: "The password was rejected. Try again.",
       passwordLabel: "Password",
       remember: "Remember this password",
+      passphraseTitle: "Passphrase for {{key}}",
+      passphraseBody: "This SSH key is protected by a passphrase.",
+      passphraseLabel: "Passphrase",
       kiTitle: "Server prompt",
       responseLabel: "Response",
       submit: "Continue",
@@ -555,15 +559,16 @@ const deCommon: CommonSchema = {
   },
   keys: {
     title: "Schlüssel",
-    emptyTitle: "Noch keine Projekt-Identität",
+    emptyTitle: "Noch nichts synchronisiert",
     emptyBody:
-      "Öffne den Projekte-Tab, um deine Verschlüsselungs-Identität zu erstellen. Sie wird auf diesem Gerät erzeugt und über deinen Tresor synchronisiert.",
+      "Synchronisiere einen SSH-Schlüssel mit `s` im Schlüssel-Tab des Wharf-Terminals oder öffne den Projekte-Tab, um deine Verschlüsselungs-Identität zu erstellen. Beides wird über deinen Tresor synchronisiert.",
+    syncedTitle: "Synchronisierte Schlüssel",
     identityTitle: "Projekt-Identität",
     createdAt: "Erstellt {{date}}",
     fingerprintLabel: "Fingerabdruck",
     copy: "Öffentlichen Schlüssel kopieren",
     sshNote:
-      "Deine SSH-Schlüssel verlassen nie deine Geräte — füge sie in der Wharf-Terminal-App hinzu und verwalte sie dort.",
+      "SSH-Schlüssel werden jetzt über deinen Tresor synchronisiert. Synchronisiere einen Schlüssel mit `s` im Schlüssel-Tab der Wharf-Terminal-App und verbinde dich dann von hier aus.",
   },
   settings: {
     title: "Einstellungen",
@@ -658,6 +663,9 @@ const deCommon: CommonSchema = {
       passwordRetry: "Das Passwort wurde abgelehnt. Versuche es erneut.",
       passwordLabel: "Passwort",
       remember: "Dieses Passwort merken",
+      passphraseTitle: "Passphrase für {{key}}",
+      passphraseBody: "Dieser SSH-Schlüssel ist durch eine Passphrase geschützt.",
+      passphraseLabel: "Passphrase",
       kiTitle: "Server-Eingabeaufforderung",
       responseLabel: "Antwort",
       submit: "Weiter",

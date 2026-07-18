@@ -1,6 +1,6 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { fromBase64 } from "@/crypto";
+import { fromBase64, toBase64 } from "@/crypto";
 
 // How many leading SHA-256 bytes to show as the identity fingerprint. Eight bytes
 // (16 hex chars, colon-grouped) is enough to recognise/verify a key at a glance
@@ -20,4 +20,27 @@ export function identityFingerprint(publicKeyBase64: string): string {
   }
   const digest = sha256(bytes).slice(0, FINGERPRINT_BYTES);
   return (bytesToHex(digest).match(/.{2}/g) ?? []).join(":");
+}
+
+// The OpenSSH SHA-256 key fingerprint of an authorized_keys line — the same
+// string `ssh-keygen -lf` and the Wharf TUI show: "SHA256:" + unpadded base64 of
+// the SHA-256 of the raw public-key blob (the second whitespace field of the
+// line, e.g. "AAAAC3Nz…"). Returns "" for empty or unparseable input so the
+// read-only Keys tab stays crash-free (the fingerprint row is then omitted).
+export function sshFingerprint(authorizedKeyLine: string): string {
+  const blobB64 = authorizedKeyLine.trim().split(/\s+/)[1];
+  if (!blobB64) {
+    return "";
+  }
+  let blob: Uint8Array;
+  try {
+    blob = fromBase64(blobB64);
+  } catch {
+    return "";
+  }
+  if (blob.length === 0) {
+    return "";
+  }
+  // Unpadded standard base64, matching OpenSSH's fingerprint format.
+  return `SHA256:${toBase64(sha256(blob)).replace(/=+$/, "")}`;
 }

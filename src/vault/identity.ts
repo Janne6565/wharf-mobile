@@ -121,7 +121,8 @@ async function persistIdentityLocally(
   writeVaultBlob(blob);
   await updateVaultMeta({ version, fingerprint: fingerprint(newPayload) });
   updateVaultSessionPayload(newPayload);
-  store.dispatch(vaultDocumentUpdated({ hosts: parseVaultDocument(newPayload).hosts, version }));
+  const document = parseVaultDocument(newPayload);
+  store.dispatch(vaultDocumentUpdated({ hosts: document.hosts, keys: document.keys, version }));
 }
 
 // pushIdentity seals the identity into the personal vault and uploads it with

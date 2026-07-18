@@ -11,6 +11,13 @@
 //       ONLY inside this encrypted payload. A schema-1 document is a valid
 //       schema-2 document with `identity` absent, so parsing accepts both and
 //       never rejects on version.
+//   3 — schema 2 plus an optional `keys` array: SSH private keys synced through
+//       the personal vault (M8). Each raw key carries the verbatim keyfile bytes
+//       in `material`, which — like host `password` — is DELIBERATELY OMITTED from
+//       the typed VaultKeyMeta so the private material can never leak into the UI
+//       by rendering a key object. The material is read transiently at connect
+//       time only (see keySecret.ts). Earlier schemas simply have `keys` absent,
+//       so parsing accepts 1–3 and never rejects on version.
 
 // A stored SSH connection. Mirrors the Go host shape minus `password`, which is
 // intentionally absent from the type so it is never carried into the UI.
@@ -37,10 +44,24 @@ export interface VaultIdentity {
   readonly createdAt: string;
 }
 
+// Metadata for a synced SSH key. Mirrors the Go vault key shape minus `material`
+// (the verbatim keyfile bytes), which is intentionally absent from the type so the
+// private key is never carried into the UI. Read the material transiently via
+// keySecret.ts at connect time instead.
+export interface VaultKeyMeta {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly publicKey?: string;
+  readonly sourcePath?: string;
+  readonly addedAt: string;
+}
+
 export interface VaultDocument {
   readonly schema: number;
   readonly hosts: readonly VaultHost[];
   readonly identity?: VaultIdentity;
+  readonly keys: readonly VaultKeyMeta[];
 }
 
 interface RawHost {
@@ -106,21 +127,49 @@ function toIdentity(raw: unknown): VaultIdentity | undefined {
   return { x25519Priv, x25519Pub, createdAt };
 }
 
+interface RawKey {
+  id?: unknown;
+  name?: unknown;
+  type?: unknown;
+  publicKey?: unknown;
+  sourcePath?: unknown;
+  addedAt?: unknown;
+  // `material` is present in the raw JSON but deliberately NOT read here — the
+  // same discipline as host `password`. It is read transiently by keySecret.ts.
+}
+
+// Map a raw JSON key onto a typed VaultKeyMeta, copying only the non-secret
+// fields. Omitting `material` is what keeps the private key out of the UI.
+function toKey(raw: RawKey): VaultKeyMeta {
+  return {
+    id: str(raw.id),
+    name: str(raw.name),
+    type: str(raw.type),
+    addedAt: str(raw.addedAt),
+    ...(raw.publicKey !== undefined ? { publicKey: optionalStr(raw.publicKey) } : {}),
+    ...(raw.sourcePath !== undefined ? { sourcePath: optionalStr(raw.sourcePath) } : {}),
+  };
+}
+
 // Decode and parse the decrypted vault payload into a typed document. Tolerates
-// a missing/absent `hosts` array (defaults to []) and a missing `identity`
-// (schema-1 documents, or accounts without an identity yet).
+// a missing/absent `hosts` array (defaults to []), a missing `identity` (schema-1
+// documents, or accounts without an identity yet), and a missing/null `keys`
+// array (schema 1/2 documents, or accounts with no synced keys yet).
 export function parseVaultDocument(payload: Uint8Array): VaultDocument {
   const raw = JSON.parse(new TextDecoder().decode(payload)) as {
     schema?: unknown;
     hosts?: unknown;
     identity?: unknown;
+    keys?: unknown;
   };
   const rawHosts = Array.isArray(raw.hosts) ? raw.hosts : [];
+  const rawKeys = Array.isArray(raw.keys) ? raw.keys : [];
   const identity = toIdentity(raw.identity);
   return {
     schema: typeof raw.schema === "number" ? raw.schema : 1,
     hosts: rawHosts.map((h) => toHost(h as RawHost)),
     ...(identity ? { identity } : {}),
+    keys: rawKeys.map((k) => toKey(k as RawKey)),
   };
 }
 

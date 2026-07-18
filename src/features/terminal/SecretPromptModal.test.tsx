@@ -20,6 +20,14 @@ const kiPrompt: SshSecretPromptEvent = {
   echo: true,
 };
 
+const passphrasePrompt: SshSecretPromptEvent = {
+  promptId: "p3",
+  sessionId: "s1",
+  kind: "passphrase",
+  prompt: "id_ed25519",
+  echo: false,
+};
+
 describe("SecretPromptModal", () => {
   it("shows the remember toggle for a password prompt when the host can persist", async () => {
     await renderWithProviders(
@@ -50,6 +58,21 @@ describe("SecretPromptModal", () => {
       <SecretPromptModal prompt={kiPrompt} canRemember onSubmit={jest.fn()} onCancel={jest.fn()} />,
     );
     expect(screen.queryByTestId("terminal-secret-remember")).toBeNull();
+  });
+
+  it("names the key and hides the remember toggle for a passphrase prompt", async () => {
+    await renderWithProviders(
+      <SecretPromptModal
+        prompt={passphrasePrompt}
+        canRemember
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+      />,
+    );
+    // The passphrase title interpolates the key name (the event's `prompt`).
+    expect(screen.getByText("Passphrase for id_ed25519")).toBeTruthy();
+    expect(screen.queryByTestId("terminal-secret-remember")).toBeNull();
+    expect(screen.getByTestId("terminal-secret-input")).toBeTruthy();
   });
 
   it("still renders the secret input when the remember toggle is hidden", async () => {

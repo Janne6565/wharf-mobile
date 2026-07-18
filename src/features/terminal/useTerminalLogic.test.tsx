@@ -10,6 +10,7 @@ import { readProjectStoredPassword } from "@/sync/projectHostSecret";
 import { setProjectHostPassword } from "@/sync/projectVaultWrite";
 import { setHostPassword } from "@/vault/hostMutations";
 import { readStoredPassword } from "@/vault/hostSecret";
+import { readVaultKeyRefs } from "@/vault/keySecret";
 // The control surface lives only on the fake; import it from the fake file
 // directly (the barrel's type surface, which the hook uses, is re-exported here
 // too). At runtime jest resolves this to the same module instance the hook loads.
@@ -36,6 +37,9 @@ jest.mock("./useTerminalHtml", () => ({ useTerminalHtml: () => "file:///terminal
 // Isolate the vault side effects; extractStoredPassword + setHostPasswordInPayload
 // preservation are covered by hostSecret.test / mutate.test.
 jest.mock("@/vault/hostSecret", () => ({ readStoredPassword: jest.fn(() => "") }));
+// Synced key material is read transiently at connect time (covered in
+// keySecret.test); mock it here to assert the key-mode connect wiring.
+jest.mock("@/vault/keySecret", () => ({ readVaultKeyRefs: jest.fn(() => []) }));
 // A project host's stored password is resolved from the on-disk project cache
 // (covered in projectHostSecret.test); mock it here to assert the connect wiring.
 jest.mock("@/sync/projectHostSecret", () => ({
@@ -53,6 +57,7 @@ jest.mock("@/sync/projectVaultWrite", () => ({
 const mockedReadStoredPassword = readStoredPassword as jest.MockedFunction<
   typeof readStoredPassword
 >;
+const mockedReadVaultKeyRefs = readVaultKeyRefs as jest.MockedFunction<typeof readVaultKeyRefs>;
 const mockedReadProjectStoredPassword = readProjectStoredPassword as jest.MockedFunction<
   typeof readProjectStoredPassword
 >;
@@ -92,11 +97,13 @@ describe("useTerminalLogic", () => {
     mockParams = { hostId: "h1" };
     mockedReadStoredPassword.mockReturnValue("");
     mockedReadProjectStoredPassword.mockResolvedValue("");
+    mockedReadVaultKeyRefs.mockReturnValue([]);
     store.dispatch(vaultLocked());
     store.dispatch(projectsReset());
     store.dispatch(
       vaultUnlocked({
         hosts: [{ id: "h1", name: "prod-api-01", user: "deniz", addr: "prod.io", port: 22 }],
+        keys: [],
         version: 0,
       }),
     );
@@ -311,6 +318,75 @@ describe("useTerminalLogic", () => {
     expect(mockedReadStoredPassword).toHaveBeenCalledWith("h1");
     expect(mockedReadProjectStoredPassword).not.toHaveBeenCalled();
     expect(__calls.connect[0]).toMatchObject({ storedPassword: "personal-pw" });
+  });
+
+  it("connects a key-mode host with authMethod 'key' and the synced key refs", async () => {
+    // The seed host in beforeEach has no authMethod → key mode (matching the TUI's
+    // legacy default). The synced vault keys are offered in key mode.
+    const KEYS = [{ name: "id_ed25519", materialB64: "bWF0" }];
+    mockedReadVaultKeyRefs.mockReturnValue(KEYS);
+
+    await mount();
+
+    expect(mockedReadVaultKeyRefs).toHaveBeenCalled();
+    expect(__calls.connect[0]).toMatchObject({ authMethod: "key", keys: KEYS });
+  });
+
+  it("connects a password-mode host with authMethod 'password' and no keys", async () => {
+    mockedReadVaultKeyRefs.mockReturnValue([{ name: "id_ed25519", materialB64: "bWF0" }]);
+    store.dispatch(
+      vaultUnlocked({
+        hosts: [
+          {
+            id: "h1",
+            name: "prod-api-01",
+            user: "deniz",
+            addr: "prod.io",
+            port: 22,
+            authMethod: "password",
+          },
+        ],
+        keys: [],
+        version: 0,
+      }),
+    );
+
+    await mount();
+
+    expect(__calls.connect[0]).toMatchObject({ authMethod: "password" });
+    expect(__calls.connect[0].keys).toBeUndefined();
+    // Password mode never reads the synced key material.
+    expect(mockedReadVaultKeyRefs).not.toHaveBeenCalled();
+  });
+
+  it("connects a key-mode project host with the caller's synced keys", async () => {
+    const KEYS = [{ name: "id_ed25519", materialB64: "bWF0" }];
+    mockedReadVaultKeyRefs.mockReturnValue(KEYS);
+    mockParams = { hostId: "h1", projectId: "proj-1" };
+    store.dispatch(
+      projectsLoaded({
+        offline: false,
+        invites: [],
+        projects: [
+          {
+            id: "proj-1",
+            name: "team",
+            description: "",
+            role: "MEMBER",
+            memberCount: 1,
+            pendingInviteCount: 0,
+            version: 0,
+            awaiting: false,
+            hosts: [{ id: "h1", name: "prod-api-01", user: "deniz", addr: "prod.io", port: 22 }],
+          },
+        ],
+      }),
+    );
+
+    await mount();
+
+    // A project host still uses the caller's own personal synced keys.
+    expect(__calls.connect[0]).toMatchObject({ authMethod: "key", keys: KEYS });
   });
 
   it("forwards user keystrokes to write and size messages to resize", async () => {

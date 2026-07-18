@@ -53,7 +53,7 @@ describe("HostDetailScreen back navigation", () => {
   });
 
   it("labels back with the project name and pops the stack when rendered in the projects stack", async () => {
-    store.dispatch(vaultUnlocked({ hosts: PERSONAL, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: PERSONAL, keys: [], version: 1 }));
     store.dispatch(projectsLoaded({ projects: [PROJECT], invites: [], offline: false }));
     mockSegments = PROJECTS_SEGMENTS;
     mockParams = { hostId: "ph1", projectId: "pj1" };
@@ -74,7 +74,7 @@ describe("HostDetailScreen back navigation", () => {
   });
 
   it("labels back Hosts and pops the stack when a project host is opened from the Hosts tab", async () => {
-    store.dispatch(vaultUnlocked({ hosts: PERSONAL, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: PERSONAL, keys: [], version: 1 }));
     store.dispatch(projectsLoaded({ projects: [PROJECT], invites: [], offline: false }));
     // Hosts-tab origin: projectId is present (project host) but the render is under
     // the hosts stack, so the back label is generic and back() pops that stack.
@@ -87,7 +87,7 @@ describe("HostDetailScreen back navigation", () => {
   });
 
   it("labels back Hosts and pops the stack for a personal host", async () => {
-    store.dispatch(vaultUnlocked({ hosts: PERSONAL, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: PERSONAL, keys: [], version: 1 }));
     mockSegments = HOSTS_SEGMENTS;
     mockParams = { hostId: "h1" };
     const { getByText } = await renderWithProviders(<HostDetailScreen />);
@@ -110,7 +110,7 @@ describe("HostDetailScreen back navigation", () => {
   });
 
   it("connects into the hosts-stack terminal from the hosts stack", async () => {
-    store.dispatch(vaultUnlocked({ hosts: PERSONAL, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: PERSONAL, keys: [], version: 1 }));
     mockSegments = HOSTS_SEGMENTS;
     mockParams = { hostId: "h1" };
     const { getByTestId } = await renderWithProviders(<HostDetailScreen />);

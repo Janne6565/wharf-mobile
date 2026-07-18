@@ -7,13 +7,15 @@ import { cn } from "@/lib/cn";
 import { colors } from "@/theme/colors";
 import type { SshSecretPromptEvent } from "../../../modules/wharf-ssh";
 
-// Secret-entry sheet for a password / keyboard-interactive challenge. Retry copy
-// distinguishes a rejected password; "remember this password" is offered only for
-// password prompts (never keyboard-interactive) and only when the host can persist
-// it (`canRemember`). Both personal and project hosts can now persist — the hook
-// passes `canRemember` true for a password prompt on either — but the prop stays
-// wired so the modal keeps documenting the single gate point (e.g. ki prompts, or a
-// future host kind that cannot remember). Cancelling resolves the prompt with null.
+// Secret-entry sheet for a password / keyboard-interactive / key-passphrase
+// challenge. Retry copy distinguishes a rejected password; a "passphrase" prompt
+// names the synced key it unlocks (`prompt` carries the key name). "Remember this
+// password" is offered ONLY for the login-password kinds (never keyboard-
+// interactive, never a key passphrase — a passphrase is not a host secret we
+// persist in v1) and only when the host can persist it (`canRemember`). Both
+// personal and project hosts can persist, so the hook passes `canRemember` true
+// for a password prompt on either, but the prop stays wired so the modal keeps
+// documenting the single gate point. Cancelling resolves the prompt with null.
 interface SecretPromptModalProps {
   readonly prompt: SshSecretPromptEvent | null;
   readonly canRemember: boolean;
@@ -70,12 +72,27 @@ export function SecretPromptModal({
 
   const isKi = prompt?.kind === "ki";
   const isRetry = prompt?.kind === "password_retry";
-  const title = isKi ? t("terminal.secret.kiTitle") : t("terminal.secret.passwordTitle");
-  const message = isKi
-    ? prompt?.prompt
-    : isRetry
-      ? t("terminal.secret.passwordRetry")
-      : t("terminal.secret.passwordBody");
+  const isPassphrase = prompt?.kind === "passphrase";
+  // Remember is only meaningful for a login password (persisted to the vault);
+  // never for a ki challenge or a key passphrase.
+  const canRememberKind = prompt?.kind === "password" || prompt?.kind === "password_retry";
+  const title = isPassphrase
+    ? t("terminal.secret.passphraseTitle", { key: prompt?.prompt })
+    : isKi
+      ? t("terminal.secret.kiTitle")
+      : t("terminal.secret.passwordTitle");
+  const message = isPassphrase
+    ? t("terminal.secret.passphraseBody")
+    : isKi
+      ? prompt?.prompt
+      : isRetry
+        ? t("terminal.secret.passwordRetry")
+        : t("terminal.secret.passwordBody");
+  const inputLabel = isPassphrase
+    ? t("terminal.secret.passphraseLabel")
+    : isKi
+      ? t("terminal.secret.responseLabel")
+      : t("terminal.secret.passwordLabel");
 
   return (
     <Sheet visible={prompt !== null} onClose={onCancel} testID="terminal-secret-sheet">
@@ -86,7 +103,7 @@ export function SecretPromptModal({
             <Text className="mb-4 text-[13px] leading-5 text-muted">{message}</Text>
           ) : null}
           <FormField
-            label={isKi ? t("terminal.secret.responseLabel") : t("terminal.secret.passwordLabel")}
+            label={inputLabel}
             value={secret}
             onChangeText={setSecret}
             secureTextEntry={isKi ? !prompt.echo : true}
@@ -95,7 +112,7 @@ export function SecretPromptModal({
             onSubmitEditing={() => onSubmit(secret, remember)}
             testID="terminal-secret-input"
           />
-          {!isKi && canRemember ? (
+          {canRememberKind && canRemember ? (
             <RememberToggle
               checked={remember}
               onToggle={() => setRemember((value) => !value)}

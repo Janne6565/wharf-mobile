@@ -37,7 +37,7 @@ async function commitPayload(newPayload: Uint8Array): Promise<void> {
   updateVaultSessionPayload(newPayload);
   const version = store.getState().vault.version;
   const document = parseVaultDocument(newPayload);
-  store.dispatch(vaultDocumentUpdated({ hosts: document.hosts, version }));
+  store.dispatch(vaultDocumentUpdated({ hosts: document.hosts, keys: document.keys, version }));
   scheduleSyncPush();
 }
 

@@ -75,7 +75,7 @@ describe("HostsScreen", () => {
   });
 
   it("renders the decrypted hosts grouped under PERSONAL", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     const { getByText } = await renderWithProviders(<HostsScreen />);
 
     // v2 ScreenTitle prefixes the mono title with an accent `❯` prompt.
@@ -87,7 +87,7 @@ describe("HostsScreen", () => {
   });
 
   it("filters hosts with the search field", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     const { getByText, queryByText, getByPlaceholderText } = await renderWithProviders(
       <HostsScreen />,
     );
@@ -101,7 +101,7 @@ describe("HostsScreen", () => {
   });
 
   it("navigates to the host detail on row press", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     const { getByText } = await renderWithProviders(<HostsScreen />);
 
     fireEvent.press(getByText("homelab"));
@@ -112,7 +112,7 @@ describe("HostsScreen", () => {
   });
 
   it("renders the probe RTT inline for a reachable host", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     store.dispatch(probeResulted({ hostId: "h1", status: "online", rttMs: 12 }));
     const { getByText } = await renderWithProviders(<HostsScreen />);
 
@@ -120,14 +120,14 @@ describe("HostsScreen", () => {
   });
 
   it("shows the empty state when the vault has no hosts", async () => {
-    store.dispatch(vaultUnlocked({ hosts: [], version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: [], keys: [], version: 1 }));
     const { getByText } = await renderWithProviders(<HostsScreen />);
 
     expect(getByText("No hosts yet.")).toBeOnTheScreen();
   });
 
   it("opens the context menu with all four actions on long-press of a personal host", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     const { getByText, getByTestId } = await renderWithProviders(<HostsScreen />);
 
     fireEvent(getByText("homelab"), "longPress");
@@ -139,7 +139,7 @@ describe("HostsScreen", () => {
   });
 
   it("connects to the terminal route from the menu", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     const { getByText, getByTestId } = await renderWithProviders(<HostsScreen />);
 
     fireEvent(getByText("homelab"), "longPress");
@@ -153,7 +153,7 @@ describe("HostsScreen", () => {
   });
 
   it("shows only Connect for a project host", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     store.dispatch(projectsLoaded({ projects: [PROJECT], invites: [], offline: false }));
     const { getByText, getByTestId, queryByTestId } = await renderWithProviders(<HostsScreen />);
 
@@ -166,7 +166,7 @@ describe("HostsScreen", () => {
   });
 
   it("moves a personal host into a chosen non-awaiting project", async () => {
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     store.dispatch(
       projectsLoaded({ projects: [PROJECT, AWAITING_PROJECT], invites: [], offline: false }),
     );
@@ -186,7 +186,7 @@ describe("HostsScreen", () => {
 
   it("deletes a personal host after the confirm alert", async () => {
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
-    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
     const { getByText, getByTestId } = await renderWithProviders(<HostsScreen />);
 
     fireEvent(getByText("homelab"), "longPress");
