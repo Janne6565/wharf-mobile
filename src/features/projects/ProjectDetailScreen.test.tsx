@@ -22,10 +22,16 @@ jest.mock("expo-router", () => ({
 const mockGetProject = jest.fn();
 const mockCreateInvite = jest.fn();
 const mockRevokeInvite = jest.fn();
+const mockUpdateProject = jest.fn();
+const mockDeleteProject = jest.fn();
+const mockLeaveProject = jest.fn();
 jest.mock("@/api/wharf", () => ({
   getProject: () => mockGetProject(),
   createInvite: (id: string, body: { email: string }) => mockCreateInvite(id, body),
   revokeInvite: (id: string, inviteId: string) => mockRevokeInvite(id, inviteId),
+  updateProject: (id: string, body: unknown) => mockUpdateProject(id, body),
+  deleteProject: (id: string) => mockDeleteProject(id),
+  leaveProject: (id: string) => mockLeaveProject(id),
 }));
 
 const mockRunProjectsSync = jest.fn();
@@ -99,6 +105,9 @@ describe("ProjectDetailScreen", () => {
     mockGetProject.mockResolvedValue(DETAIL);
     mockCreateInvite.mockResolvedValue({ id: "inv2", email: "new@acme.io" });
     mockRevokeInvite.mockResolvedValue(undefined);
+    mockUpdateProject.mockResolvedValue(undefined);
+    mockDeleteProject.mockResolvedValue(undefined);
+    mockLeaveProject.mockResolvedValue(undefined);
   });
 
   it("renders the title, summary, members with (you), pending invite and hosts", async () => {
@@ -202,6 +211,108 @@ describe("ProjectDetailScreen", () => {
     fireEvent.press(getByTestId("invite-revoke"));
 
     await waitFor(() => expect(mockRevokeInvite).toHaveBeenCalledWith("p1", "inv1"));
+    alertSpy.mockRestore();
+  });
+
+  // Auto-confirm a destructive Alert by invoking its confirm button.
+  function autoConfirmAlert() {
+    return jest.spyOn(Alert, "alert").mockImplementation((_t, _b, buttons) => {
+      buttons?.find((btn) => btn.style === "destructive")?.onPress?.();
+    });
+  }
+
+  it("shows the edit and leave actions to an admin, but not delete", async () => {
+    store.dispatch(projectsLoaded({ projects: [view()], invites: [], offline: false }));
+    const { getByTestId, queryByTestId, getByText } = await renderWithProviders(
+      <ProjectDetailScreen />,
+    );
+
+    await waitFor(() => expect(getByText("mara@acme.io")).toBeOnTheScreen());
+    expect(getByTestId("project-edit-row")).toBeOnTheScreen();
+    expect(getByTestId("project-leave-row")).toBeOnTheScreen();
+    expect(queryByTestId("project-delete-row")).toBeNull();
+  });
+
+  it("shows the delete action (not leave) to the owner", async () => {
+    store.dispatch(
+      projectsLoaded({ projects: [view({ role: "OWNER" })], invites: [], offline: false }),
+    );
+    mockGetProject.mockResolvedValue({ ...DETAIL, role: "OWNER" });
+    const { getByTestId, queryByTestId, getByText } = await renderWithProviders(
+      <ProjectDetailScreen />,
+    );
+
+    await waitFor(() => expect(getByText("mara@acme.io")).toBeOnTheScreen());
+    expect(getByTestId("project-edit-row")).toBeOnTheScreen();
+    expect(getByTestId("project-delete-row")).toBeOnTheScreen();
+    expect(queryByTestId("project-leave-row")).toBeNull();
+  });
+
+  it("shows only the leave action to a plain member", async () => {
+    store.dispatch(
+      projectsLoaded({ projects: [view({ role: "MEMBER" })], invites: [], offline: false }),
+    );
+    mockGetProject.mockResolvedValue({ ...DETAIL, role: "MEMBER" });
+    const { getByTestId, queryByTestId, getByText } = await renderWithProviders(
+      <ProjectDetailScreen />,
+    );
+
+    await waitFor(() => expect(getByText("mara@acme.io")).toBeOnTheScreen());
+    expect(getByTestId("project-leave-row")).toBeOnTheScreen();
+    expect(queryByTestId("project-edit-row")).toBeNull();
+    expect(queryByTestId("project-delete-row")).toBeNull();
+  });
+
+  it("saves an edit and re-fires the projects sync", async () => {
+    store.dispatch(projectsLoaded({ projects: [view()], invites: [], offline: false }));
+    const utils = await renderWithProviders(<ProjectDetailScreen />);
+    await waitFor(() => expect(utils.getByText("mara@acme.io")).toBeOnTheScreen());
+
+    fireEvent.press(utils.getByTestId("project-edit-row"));
+    await waitFor(() => expect(utils.getByTestId("project-name")).toBeOnTheScreen());
+    await act(async () => {
+      fireEvent.changeText(utils.getByTestId("project-name"), "Atlas v2");
+    });
+    await act(async () => {
+      fireEvent.press(utils.getByTestId("project-submit"));
+    });
+
+    await waitFor(() =>
+      expect(mockUpdateProject).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ name: "Atlas v2" }),
+      ),
+    );
+    await waitFor(() => expect(mockRunProjectsSync).toHaveBeenCalled());
+  });
+
+  it("deletes the project after confirmation (owner)", async () => {
+    const alertSpy = autoConfirmAlert();
+    store.dispatch(
+      projectsLoaded({ projects: [view({ role: "OWNER" })], invites: [], offline: false }),
+    );
+    mockGetProject.mockResolvedValue({ ...DETAIL, role: "OWNER" });
+    const { getByTestId, getByText } = await renderWithProviders(<ProjectDetailScreen />);
+    await waitFor(() => expect(getByText("mara@acme.io")).toBeOnTheScreen());
+
+    fireEvent.press(getByTestId("project-delete-row"));
+
+    await waitFor(() => expect(mockDeleteProject).toHaveBeenCalledWith("p1"));
+    alertSpy.mockRestore();
+  });
+
+  it("leaves the project after confirmation (member)", async () => {
+    const alertSpy = autoConfirmAlert();
+    store.dispatch(
+      projectsLoaded({ projects: [view({ role: "MEMBER" })], invites: [], offline: false }),
+    );
+    mockGetProject.mockResolvedValue({ ...DETAIL, role: "MEMBER" });
+    const { getByTestId, getByText } = await renderWithProviders(<ProjectDetailScreen />);
+    await waitFor(() => expect(getByText("mara@acme.io")).toBeOnTheScreen());
+
+    fireEvent.press(getByTestId("project-leave-row"));
+
+    await waitFor(() => expect(mockLeaveProject).toHaveBeenCalledWith("p1"));
     alertSpy.mockRestore();
   });
 });

@@ -32,8 +32,9 @@ export const getCurrentUser = usersApi.getCurrentUser;
 
 // Projects + identity (M4). Mobile v1 is member-plus and READ-ONLY for project
 // vaults, so the vault-rewriting project endpoints (updateProjectVault,
-// rotateProject, updateMemberRole, …) stay unsurfaced — the mobile boundary
-// excludes rotation, role changes and project deletion (web + TUI only).
+// rotateProject) stay unsurfaced — the mobile boundary excludes DEK rotation and
+// member removal/role changes (web + TUI only). Project lifecycle (create/rename/
+// delete) and self-leave ARE surfaced (see below).
 export const listProjects = projectsApi.listProjects;
 export const getProjectVault = projectsApi.getProjectVault;
 export const getProject = projectsApi.getProject;
@@ -43,10 +44,18 @@ export const acceptInvite = usersApi.acceptInvite;
 export const declineInvite = usersApi.declineInvite;
 
 // Light admin (M5): invite create/revoke and the background finalize-keys pass
-// (list members awaiting a key + seal the DEK to each). These are the ONLY
-// mutating project endpoints mobile exposes; rotation/role-change/update remain
-// out of scope by design (see the boundary note above).
+// (list members awaiting a key + seal the DEK to each). Rotation/role-change
+// remain out of scope by design (see the boundary note above).
 export const createInvite = projectsApi.createInvite;
 export const revokeInvite = projectsApi.deleteInvite;
 export const getPendingKeys = projectsApi.getPendingKeys;
 export const submitMemberKey = projectsApi.submitMemberKey;
+
+// Project lifecycle + membership (M6): create a project (owner-wrapped empty
+// vault), rename/re-describe it (admin+), delete it (owner only), and leave it
+// (non-owner). These stay within the mobile v1 boundary — no DEK rotation, no
+// member removal, no role changes.
+export const createProject = projectsApi.createProject;
+export const updateProject = projectsApi.updateProject;
+export const deleteProject = projectsApi.deleteProject;
+export const leaveProject = projectsApi.leaveProject;

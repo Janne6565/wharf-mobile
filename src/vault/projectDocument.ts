@@ -11,6 +11,20 @@
 
 import { parseVaultDocument, type VaultHost } from "./document";
 
+// The canonical empty project document — key order and shape match the TUI's
+// store.ProjectDoc (and wharf-web's projectDoc.ts) so freshly created projects
+// are byte-identical across clients: the canonical JSON is {"schema":1,"hosts":[]}.
+export const EMPTY_PROJECT_DOCUMENT = { schema: 1, hosts: [] } as const;
+
+const encoder = new TextEncoder();
+
+// The plaintext sealed into a new project's WHARFP blob. JSON.stringify over the
+// literal above preserves the {schema, hosts} key order the other clients emit,
+// so the resulting ciphertext is cross-client byte-compatible.
+export function emptyProjectPayload(): Uint8Array {
+  return encoder.encode(JSON.stringify(EMPTY_PROJECT_DOCUMENT));
+}
+
 // Parse a decrypted project payload into its hosts, tolerating hosts:null.
 export function parseProjectHosts(payload: Uint8Array): readonly VaultHost[] {
   return parseVaultDocument(payload).hosts;

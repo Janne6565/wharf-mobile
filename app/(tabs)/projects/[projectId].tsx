@@ -1,4 +1,4 @@
-import { ChevronLeft, Plus, X } from "lucide-react-native";
+import { ChevronLeft, LogOut, type LucideIcon, Pencil, Plus, Trash2, X } from "lucide-react-native";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
@@ -7,6 +7,7 @@ import { Card, HostRow, RowDivider, ScreenContainer, SectionLabel } from "@/comp
 import { InviteSheet } from "@/features/projects/InviteSheet";
 import { projectInitials } from "@/features/projects/lib";
 import { MemberRow } from "@/features/projects/MemberRow";
+import { ProjectFormSheet } from "@/features/projects/ProjectFormSheet";
 import { ProjectTile } from "@/features/projects/ProjectTile";
 import { useProjectDetailLogic } from "@/features/projects/useProjectDetailLogic";
 import { colors } from "@/theme/colors";
@@ -77,6 +78,88 @@ function InviteMemberRow({ onPress }: { readonly onPress: () => void }) {
   );
 }
 
+interface ManageRowProps {
+  readonly icon: LucideIcon;
+  readonly label: string;
+  readonly onPress: () => void;
+  readonly danger?: boolean;
+  readonly testID?: string;
+}
+
+// A single row in the project management card: an accent action (edit) or a
+// danger action (delete/leave), styled to match the invite row.
+function ManageRow({ icon: Icon, label, onPress, danger = false, testID }: ManageRowProps) {
+  const accent = useAccentColor();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      className="flex-row items-center gap-2 px-4 py-3.5"
+      testID={testID}
+    >
+      <Icon size={16} color={danger ? colors.danger : accent} />
+      <Text className={danger ? "text-[15px] text-danger" : "text-[15px] text-accent"}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+interface ProjectManageSectionProps {
+  readonly canAdmin: boolean;
+  readonly isOwner: boolean;
+  readonly onEdit: () => void;
+  readonly onDelete: () => void;
+  readonly onLeave: () => void;
+}
+
+// The management card (mock 04, below the hosts): an "Edit project" row for
+// admins/owners, then a single destructive row — "Delete project" for the owner,
+// "Leave project" for everyone else (the owner cannot leave without transferring
+// ownership, which mobile v1 does not surface).
+function ProjectManageSection({
+  canAdmin,
+  isOwner,
+  onEdit,
+  onDelete,
+  onLeave,
+}: ProjectManageSectionProps) {
+  const { t } = useTranslation();
+  return (
+    <View className="mt-6">
+      <SectionLabel>{t("projectDetail.manage")}</SectionLabel>
+      <Card>
+        {canAdmin ? (
+          <ManageRow
+            icon={Pencil}
+            label={t("projectDetail.editAction")}
+            onPress={onEdit}
+            testID="project-edit-row"
+          />
+        ) : null}
+        {canAdmin ? <RowDivider /> : null}
+        {isOwner ? (
+          <ManageRow
+            icon={Trash2}
+            label={t("projectDetail.deleteAction")}
+            onPress={onDelete}
+            danger
+            testID="project-delete-row"
+          />
+        ) : (
+          <ManageRow
+            icon={LogOut}
+            label={t("projectDetail.leaveAction")}
+            onPress={onLeave}
+            danger
+            testID="project-leave-row"
+          />
+        )}
+      </Card>
+    </View>
+  );
+}
+
 // A shimmer-free placeholder shown while the members/invites detail loads (the
 // summary list is already on screen from the synced state). Three muted bars
 // stand in for member rows so the card does not pop in empty.
@@ -114,6 +197,7 @@ export default function ProjectDetailScreen() {
     invites,
     currentUserId,
     canAdmin,
+    isOwner,
     loadingDetail,
     projectsLoaded,
     goBack,
@@ -128,6 +212,13 @@ export default function ProjectDetailScreen() {
     resetInvite,
     confirmRevoke,
     revokingId,
+    editOpen,
+    openEdit,
+    closeEdit,
+    submitEdit,
+    editSaving,
+    confirmDelete,
+    confirmLeave,
   } = useProjectDetailLogic();
 
   const summary = project?.description
@@ -140,6 +231,22 @@ export default function ProjectDetailScreen() {
       body: t("projectDetail.revokeConfirmBody", { email: invite.email ?? "" }),
       confirm: t("projectDetail.revokeConfirm"),
       cancel: t("projectDetail.revokeCancel"),
+    });
+
+  const onDelete = () =>
+    confirmDelete({
+      title: t("projectDetail.deleteConfirmTitle"),
+      body: t("projectDetail.deleteConfirmBody", { name: project?.name ?? "" }),
+      confirm: t("projectDetail.deleteConfirm"),
+      cancel: t("projectDetail.deleteCancel"),
+    });
+
+  const onLeave = () =>
+    confirmLeave({
+      title: t("projectDetail.leaveConfirmTitle"),
+      body: t("projectDetail.leaveConfirmBody", { name: project?.name ?? "" }),
+      confirm: t("projectDetail.leaveConfirm"),
+      cancel: t("projectDetail.leaveCancel"),
     });
 
   return (
@@ -214,6 +321,14 @@ export default function ProjectDetailScreen() {
             )}
           </View>
 
+          <ProjectManageSection
+            canAdmin={canAdmin}
+            isOwner={isOwner}
+            onEdit={openEdit}
+            onDelete={onDelete}
+            onLeave={onLeave}
+          />
+
           {canAdmin ? (
             <InviteSheet
               visible={inviteOpen}
@@ -223,6 +338,18 @@ export default function ProjectDetailScreen() {
               error={inviteError}
               done={inviteDone}
               reset={resetInvite}
+            />
+          ) : null}
+          {canAdmin ? (
+            <ProjectFormSheet
+              visible={editOpen}
+              onClose={closeEdit}
+              title={t("projectDetail.editTitle")}
+              submitLabel={t("projectDetail.editSubmit")}
+              initialName={project.name}
+              initialDescription={project.description}
+              saving={editSaving}
+              onSubmit={submitEdit}
             />
           ) : null}
         </>

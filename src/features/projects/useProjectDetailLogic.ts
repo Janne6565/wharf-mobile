@@ -10,7 +10,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { getHttpStatus } from "@/api/httpError";
-import { createInvite, getProject, revokeInvite } from "@/api/wharf";
+import {
+  createInvite,
+  deleteProject,
+  getProject,
+  leaveProject,
+  revokeInvite,
+  updateProject,
+} from "@/api/wharf";
 import type { HostStatus } from "@/components";
 import { type ProbeTarget, useHostProbes } from "@/features/hosts/useHostProbes";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -25,7 +32,9 @@ const RATE_LIMITED = 429;
 // (rate limited), or any other failure (generic). Null when there is no error.
 export type InviteErrorKind = "conflict" | "rateLimited" | "generic" | null;
 
-export interface RevokeConfirmCopy {
+// The copy for a destructive Alert.alert confirmation (revoke invite, delete or
+// leave a project). The screen owns t(); the hook only fires the Alert.
+export interface ConfirmCopy {
   readonly title: string;
   readonly body: string;
   readonly confirm: string;
@@ -67,6 +76,7 @@ export function useProjectDetailLogic() {
   // falling back to the synced summary role while the detail is loading.
   const role = detailQuery.data?.role ?? project?.role;
   const canAdmin = canAdminister(role);
+  const isOwner = role === "OWNER";
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["project", projectId] });
@@ -108,6 +118,46 @@ export function useProjectDetailLogic() {
   const closeInvite = useCallback(() => setInviteOpen(false), []);
   const goBack = useCallback(() => router.back(), [router]);
 
+  // Edit sheet + rename mutation (admin+). The summary name shown in the projects
+  // list comes from Redux, so a projects sync pass refreshes it after the PATCH.
+  const [editOpen, setEditOpen] = useState(false);
+  const openEdit = useCallback(() => setEditOpen(true), []);
+  const closeEdit = useCallback(() => setEditOpen(false), []);
+
+  const updateMutation = useMutation({
+    mutationFn: (vars: { name: string; description: string }) =>
+      updateProject(projectId ?? "", { name: vars.name, description: vars.description }),
+    onSuccess: () => {
+      dispatch(showToast({ messageKey: "toast.projectUpdated", kind: "success" }));
+      closeEdit();
+      refresh();
+      void runProjectsSync();
+    },
+    onError: () => dispatch(showToast({ messageKey: "toast.projectUpdateFailed", kind: "error" })),
+  });
+
+  // Delete (owner only): remove the project for everyone, then leave the screen.
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProject(projectId ?? ""),
+    onSuccess: () => {
+      dispatch(showToast({ messageKey: "toast.projectDeleted", kind: "success" }));
+      router.back();
+      void runProjectsSync();
+    },
+    onError: () => dispatch(showToast({ messageKey: "toast.projectDeleteFailed", kind: "error" })),
+  });
+
+  // Leave (non-owner): drop the caller's membership, then leave the screen.
+  const leaveMutation = useMutation({
+    mutationFn: () => leaveProject(projectId ?? ""),
+    onSuccess: () => {
+      dispatch(showToast({ messageKey: "toast.projectLeft", kind: "success" }));
+      router.back();
+      void runProjectsSync();
+    },
+    onError: () => dispatch(showToast({ messageKey: "toast.projectLeaveFailed", kind: "error" })),
+  });
+
   // Project hosts open the shared host detail, tagged with the projectId so the
   // detail resolves the host from the project view and renders it read-only.
   const openHost = useCallback(
@@ -118,7 +168,7 @@ export function useProjectDetailLogic() {
   );
 
   const confirmRevoke = useCallback(
-    (inviteId: string, copy: RevokeConfirmCopy) => {
+    (inviteId: string, copy: ConfirmCopy) => {
       Alert.alert(copy.title, copy.body, [
         { text: copy.cancel, style: "cancel" },
         {
@@ -131,6 +181,26 @@ export function useProjectDetailLogic() {
     [revokeMutation],
   );
 
+  const confirmDelete = useCallback(
+    (copy: ConfirmCopy) => {
+      Alert.alert(copy.title, copy.body, [
+        { text: copy.cancel, style: "cancel" },
+        { text: copy.confirm, style: "destructive", onPress: () => deleteMutation.mutate() },
+      ]);
+    },
+    [deleteMutation],
+  );
+
+  const confirmLeave = useCallback(
+    (copy: ConfirmCopy) => {
+      Alert.alert(copy.title, copy.body, [
+        { text: copy.cancel, style: "cancel" },
+        { text: copy.confirm, style: "destructive", onPress: () => leaveMutation.mutate() },
+      ]);
+    },
+    [leaveMutation],
+  );
+
   return {
     project,
     hosts,
@@ -139,6 +209,7 @@ export function useProjectDetailLogic() {
     invites: detailQuery.data?.invites ?? [],
     currentUserId,
     canAdmin,
+    isOwner,
     loadingDetail: detailQuery.isLoading,
     projectsLoaded,
     goBack,
@@ -155,5 +226,14 @@ export function useProjectDetailLogic() {
     // Revoke (per pending invite row).
     confirmRevoke,
     revokingId: revokeMutation.isPending ? revokeMutation.variables : undefined,
+    // Edit sheet + rename mutation (admin+).
+    editOpen,
+    openEdit,
+    closeEdit,
+    submitEdit: (name: string, description: string) => updateMutation.mutate({ name, description }),
+    editSaving: updateMutation.isPending,
+    // Destructive lifecycle: delete (owner) / leave (non-owner).
+    confirmDelete,
+    confirmLeave,
   };
 }

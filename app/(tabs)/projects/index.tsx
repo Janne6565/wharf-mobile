@@ -2,8 +2,9 @@ import { CloudOff, Info } from "lucide-react-native";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-import { Card, RowDivider, ScreenContainer, ScreenTitle } from "@/components";
+import { AddButton, Card, RowDivider, ScreenContainer, ScreenTitle } from "@/components";
 import { InviteCard } from "@/features/projects/InviteCard";
+import { ProjectFormSheet } from "@/features/projects/ProjectFormSheet";
 import { ProjectRow } from "@/features/projects/ProjectRow";
 import { useProjectsLogic } from "@/features/projects/useProjectsLogic";
 import { colors } from "@/theme/colors";
@@ -49,13 +50,21 @@ export default function ProjectsScreen() {
     acceptInvite,
     declineInvite,
     respondingId,
+    createOpen,
+    openCreate,
+    closeCreate,
+    submitCreate,
+    creating,
     showLoading,
     showEmpty,
   } = useProjectsLogic();
 
   return (
     <ScreenContainer>
-      <ScreenTitle title={t("projects.title")} />
+      <ScreenTitle
+        title={t("projects.title")}
+        action={<AddButton onPress={openCreate} testID="projects-add" />}
+      />
       {identityNeedsSync ? (
         <Notice
           icon="info"
@@ -96,6 +105,17 @@ export default function ProjectsScreen() {
       {showEmpty ? (
         <CenteredMessage title={t("projects.empty")} body={t("projects.emptyBody")} />
       ) : null}
+
+      <ProjectFormSheet
+        visible={createOpen}
+        onClose={closeCreate}
+        title={t("projects.createTitle")}
+        submitLabel={t("projects.createSubmit")}
+        initialName=""
+        initialDescription=""
+        saving={creating}
+        onSubmit={submitCreate}
+      />
     </ScreenContainer>
   );
 }

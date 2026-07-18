@@ -1,5 +1,5 @@
 import "@/i18n/config";
-import { fireEvent, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import { store } from "@/store";
 import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
 import type { InviteView, ProjectView } from "@/sync/projectTypes";
@@ -17,12 +17,26 @@ jest.mock("expo-router", () => {
 
 const mockAccept = jest.fn().mockResolvedValue({});
 const mockDecline = jest.fn().mockResolvedValue({});
+const mockCreateProject = jest.fn();
 jest.mock("@/api/wharf", () => ({
   acceptInvite: (id: string) => mockAccept(id),
   declineInvite: (id: string) => mockDecline(id),
+  createProject: (body: unknown) => mockCreateProject(body),
 }));
 jest.mock("@/sync/projectsEngine", () => ({
   runProjectsSync: jest.fn().mockResolvedValue(undefined),
+}));
+
+// The create flow bootstraps the account identity and seals the project blob; both
+// are covered in isolation (identity.test / projectCreate.test), so mock them here
+// and assert the screen wires them into the create API call.
+const mockEnsureIdentity = jest.fn();
+jest.mock("@/vault/identity", () => ({
+  ensureIdentity: () => mockEnsureIdentity(),
+}));
+const mockBuildCreateProject = jest.fn();
+jest.mock("@/vault/projectCreate", () => ({
+  buildCreateProject: (pub: Uint8Array) => mockBuildCreateProject(pub),
 }));
 
 const PROJECT: ProjectView = {
@@ -51,6 +65,12 @@ describe("ProjectsScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     store.dispatch(projectsReset());
+    mockCreateProject.mockResolvedValue({ id: "p-new" });
+    mockEnsureIdentity.mockResolvedValue({
+      kind: "ready",
+      keys: { publicKey: new Uint8Array(32), privateKey: new Uint8Array(32) },
+    });
+    mockBuildCreateProject.mockResolvedValue({ vault: "vault-b64", wrappedDek: "dek-b64" });
   });
 
   it("renders a project row with role and host/member counts", async () => {
@@ -96,5 +116,45 @@ describe("ProjectsScreen", () => {
 
     fireEvent.press(getByText("Decline"));
     await waitFor(() => expect(mockDecline).toHaveBeenCalledWith("i1"));
+  });
+
+  it("opens the create sheet from the add button", async () => {
+    store.dispatch(projectsLoaded({ projects: [], invites: [], offline: false }));
+    const utils = await renderWithProviders(<ProjectsScreen />);
+
+    fireEvent.press(utils.getByTestId("projects-add"));
+    await waitFor(() => expect(utils.getByTestId("project-name")).toBeOnTheScreen());
+  });
+
+  it("creates a project from the sheet and closes it on success", async () => {
+    store.dispatch(projectsLoaded({ projects: [], invites: [], offline: false }));
+    const utils = await renderWithProviders(<ProjectsScreen />);
+    fireEvent.press(utils.getByTestId("projects-add"));
+    await waitFor(() => expect(utils.getByTestId("project-name")).toBeOnTheScreen());
+
+    await act(async () => {
+      fireEvent.changeText(utils.getByTestId("project-name"), "Nebula");
+    });
+    await act(async () => {
+      fireEvent.press(utils.getByTestId("project-submit"));
+    });
+
+    await waitFor(() =>
+      expect(mockCreateProject).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Nebula", vault: "vault-b64", wrappedDek: "dek-b64" }),
+      ),
+    );
+    // Success closes the sheet, so its fields unmount.
+    await waitFor(() => expect(utils.queryByTestId("project-name")).toBeNull());
+  });
+
+  it("keeps the create submit disabled until a name is entered", async () => {
+    store.dispatch(projectsLoaded({ projects: [], invites: [], offline: false }));
+    const utils = await renderWithProviders(<ProjectsScreen />);
+    fireEvent.press(utils.getByTestId("projects-add"));
+    await waitFor(() => expect(utils.getByTestId("project-submit")).toBeOnTheScreen());
+
+    fireEvent.press(utils.getByTestId("project-submit"));
+    expect(mockCreateProject).not.toHaveBeenCalled();
   });
 });
