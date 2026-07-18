@@ -36,6 +36,12 @@ jest.mock("@/vault/hostMutations", () => ({
   deleteHost: (id: string) => mockDeleteHost(id),
 }));
 
+// The Hosts tab kicks the projects pass on focus (project host sections). The
+// engine is covered in isolation, so stub it here.
+jest.mock("@/sync/projectsEngine", () => ({
+  runProjectsSync: jest.fn().mockResolvedValue(undefined),
+}));
+
 const HOSTS = [
   { id: "h1", name: "homelab", user: "deniz", addr: "homelab.local", port: 22 },
   { id: "h2", name: "prod-api-01", user: "deploy", addr: "10.4.1.12", port: 22 },

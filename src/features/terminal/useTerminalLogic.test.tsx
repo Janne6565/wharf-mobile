@@ -6,6 +6,7 @@ import { queryClient } from "@/query/queryClient";
 import { store } from "@/store";
 import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
 import { vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
+import { readProjectStoredPassword } from "@/sync/projectHostSecret";
 import { setHostPassword } from "@/vault/hostMutations";
 import { readStoredPassword } from "@/vault/hostSecret";
 // The control surface lives only on the fake; import it from the fake file
@@ -34,12 +35,20 @@ jest.mock("./useTerminalHtml", () => ({ useTerminalHtml: () => "file:///terminal
 // Isolate the vault side effects; extractStoredPassword + setHostPasswordInPayload
 // preservation are covered by hostSecret.test / mutate.test.
 jest.mock("@/vault/hostSecret", () => ({ readStoredPassword: jest.fn(() => "") }));
+// A project host's stored password is resolved from the on-disk project cache
+// (covered in projectHostSecret.test); mock it here to assert the connect wiring.
+jest.mock("@/sync/projectHostSecret", () => ({
+  readProjectStoredPassword: jest.fn(() => Promise.resolve("")),
+}));
 jest.mock("@/vault/hostMutations", () => ({
   setHostPassword: jest.fn(() => Promise.resolve()),
 }));
 
 const mockedReadStoredPassword = readStoredPassword as jest.MockedFunction<
   typeof readStoredPassword
+>;
+const mockedReadProjectStoredPassword = readProjectStoredPassword as jest.MockedFunction<
+  typeof readProjectStoredPassword
 >;
 const mockedSetHostPassword = setHostPassword as jest.MockedFunction<typeof setHostPassword>;
 
@@ -73,6 +82,7 @@ describe("useTerminalLogic", () => {
     __reset();
     mockParams = { hostId: "h1" };
     mockedReadStoredPassword.mockReturnValue("");
+    mockedReadProjectStoredPassword.mockResolvedValue("");
     store.dispatch(vaultLocked());
     store.dispatch(projectsReset());
     store.dispatch(
@@ -240,6 +250,52 @@ describe("useTerminalLogic", () => {
     // "remember" was ticked, but a project host cannot persist into the personal
     // vault — so the tick is dropped, not silently no-oped after the fact.
     expect(mockedSetHostPassword).not.toHaveBeenCalled();
+  });
+
+  it("connects a project host with the password resolved from the project cache", async () => {
+    mockParams = { hostId: "h1", projectId: "proj-1" };
+    mockedReadProjectStoredPassword.mockResolvedValue("project-pw");
+    store.dispatch(
+      projectsLoaded({
+        offline: false,
+        invites: [],
+        projects: [
+          {
+            id: "proj-1",
+            name: "team",
+            description: "",
+            role: "MEMBER",
+            memberCount: 1,
+            pendingInviteCount: 0,
+            version: 0,
+            awaiting: false,
+            hosts: [{ id: "h1", name: "prod-api-01", user: "deniz", addr: "prod.io", port: 22 }],
+          },
+        ],
+      }),
+    );
+
+    const { result } = await mount();
+
+    // The project path is used (not the personal one), and its resolved password
+    // is what reaches the native connect call.
+    expect(mockedReadProjectStoredPassword).toHaveBeenCalledWith("proj-1", "h1");
+    expect(mockedReadStoredPassword).not.toHaveBeenCalled();
+    expect(__calls.connect[0]).toMatchObject({ storedPassword: "project-pw" });
+
+    await act(async () => {
+      __resolveConnect();
+    });
+    await waitFor(() => expect(result.current.phase).toBe("connected"));
+  });
+
+  it("connects a personal host with the synchronous readStoredPassword", async () => {
+    mockedReadStoredPassword.mockReturnValue("personal-pw");
+    await mount();
+
+    expect(mockedReadStoredPassword).toHaveBeenCalledWith("h1");
+    expect(mockedReadProjectStoredPassword).not.toHaveBeenCalled();
+    expect(__calls.connect[0]).toMatchObject({ storedPassword: "personal-pw" });
   });
 
   it("forwards user keystrokes to write and size messages to resize", async () => {

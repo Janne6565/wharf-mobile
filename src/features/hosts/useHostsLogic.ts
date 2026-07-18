@@ -4,10 +4,11 @@
 // the mock order). Every host is TCP-probed for reachability on focus (see
 // useHostProbes) and its status dot is coloured by the result (grey until probed).
 
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import type { HostStatus } from "@/components";
 import { useAppSelector } from "@/store/hooks";
+import { runProjectsSync } from "@/sync/projectsEngine";
 import { hostTarget } from "@/vault/document";
 import { filterHosts, groupHosts, type ProjectHostGroup } from "./lib";
 import { type ProbeTarget, useHostProbes } from "./useHostProbes";
@@ -39,6 +40,16 @@ export function useHostsLogic() {
   const probeResults = useAppSelector((state) => state.probes.results);
   const router = useRouter();
   const [query, setQuery] = useState("");
+
+  // The Hosts tab renders project host sections too, so it must also kick the
+  // projects pass — otherwise project hosts only appear after the Projects tab is
+  // first visited. Single-flight and auth/unlock-guarded in the orchestrator, so
+  // re-firing on every focus is safe; the offline path serves the disk cache.
+  useFocusEffect(
+    useCallback(() => {
+      void runProjectsSync();
+    }, []),
+  );
 
   // Probe every host on this tab (personal + all project hosts), keyed by host id.
   // Built from the full lists (not the filtered view) so the search box never

@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fromBase64, randomBytes, toBase64 } from "@/crypto";
 import { useAppSelector } from "@/store/hooks";
+import { readProjectStoredPassword } from "@/sync/projectHostSecret";
 import type { TerminalInbound, TerminalOutbound } from "@/terminal/protocol";
 import { useAccentColor } from "@/theme/useAccentColor";
 import { hostTarget, type VaultHost } from "@/vault/document";
@@ -102,6 +103,8 @@ export function useTerminalLogic() {
   const termRef = useRef<TerminalHandle>(null);
   const hostRef = useRef<VaultHost | undefined>(host);
   hostRef.current = host;
+  const projectIdRef = useRef<string | undefined>(projectId);
+  projectIdRef.current = projectId;
   const sessionIdRef = useRef<string | null>(null);
   const readyRef = useRef(false);
   const writeBufferRef = useRef<TerminalInbound[]>([]);
@@ -197,34 +200,51 @@ export function useTerminalLogic() {
       }),
     ];
 
-    connect({
-      sessionId,
-      host: target.addr,
-      port: target.port || 22,
-      user: target.user,
-      storedPassword: readStoredPassword(target.id),
-      termType: TERM_TYPE,
-      cols: sizeRef.current.cols,
-      rows: sizeRef.current.rows,
-      timeoutMs: CONNECT_TIMEOUT_MS,
-      knownHostsPath: knownHostsPath(),
-    })
-      .then(() => {
-        if (!isCurrent(sessionId) || endedRef.current) {
-          return;
-        }
-        setPhase("connected");
-        const remembered = rememberRef.current;
-        rememberRef.current = null;
-        if (remembered) {
-          void setHostPassword(target.id, remembered).catch(() => undefined);
-        }
-      })
-      .catch((error: unknown) => {
+    // Resolving a project host's stored password reads the on-disk project cache,
+    // so it must happen asynchronously before we dial. A personal host reads the
+    // in-memory personal payload synchronously. Any resolution failure degrades to
+    // "" and still connects (the engine then prompts).
+    const projectId = projectIdRef.current;
+    void (async () => {
+      const storedPassword = projectId
+        ? await readProjectStoredPassword(projectId, target.id)
+        : readStoredPassword(target.id);
+      // A teardown/reconnect during the async resolution may have retired this
+      // session — never dial for a session that is no longer current.
+      if (!isCurrent(sessionId) || endedRef.current) {
+        return;
+      }
+
+      try {
+        await connect({
+          sessionId,
+          host: target.addr,
+          port: target.port || 22,
+          user: target.user,
+          storedPassword,
+          termType: TERM_TYPE,
+          cols: sizeRef.current.cols,
+          rows: sizeRef.current.rows,
+          timeoutMs: CONNECT_TIMEOUT_MS,
+          knownHostsPath: knownHostsPath(),
+        });
+      } catch (error: unknown) {
         if (isCurrent(sessionId)) {
           endWith(parseSshErrorCode(error instanceof Error ? error.message : String(error)));
         }
-      });
+        return;
+      }
+
+      if (!isCurrent(sessionId) || endedRef.current) {
+        return;
+      }
+      setPhase("connected");
+      const remembered = rememberRef.current;
+      rememberRef.current = null;
+      if (remembered) {
+        void setHostPassword(target.id, remembered).catch(() => undefined);
+      }
+    })();
   }, [endWith, pushToTerm, isCurrent]);
 
   // Connect once per host route; tear the session down on unmount / route change.
