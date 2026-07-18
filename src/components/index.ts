@@ -13,3 +13,4 @@ export { SettingsRow } from "./SettingsRow";
 export { Sheet } from "./Sheet";
 export { type HostStatus, StatusDot } from "./StatusDot";
 export { TabBarGlassBackground } from "./TabBarGlassBackground";
+export { WharfMark } from "./WharfMark";

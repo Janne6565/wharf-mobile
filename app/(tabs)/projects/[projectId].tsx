@@ -1,11 +1,13 @@
-import { ChevronLeft, Circle, Plus, X } from "lucide-react-native";
+import { ChevronLeft, Plus, X } from "lucide-react-native";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import type { ProjectInvite } from "@/api/generated/model";
 import { Card, HostRow, RowDivider, ScreenContainer, SectionLabel } from "@/components";
 import { InviteSheet } from "@/features/projects/InviteSheet";
+import { projectInitials } from "@/features/projects/lib";
 import { MemberRow } from "@/features/projects/MemberRow";
+import { ProjectTile } from "@/features/projects/ProjectTile";
 import { useProjectDetailLogic } from "@/features/projects/useProjectDetailLogic";
 import { colors } from "@/theme/colors";
 import { useAccentColor } from "@/theme/useAccentColor";
@@ -22,8 +24,8 @@ function PendingInviteLine({ invite, canRevoke, revoking, onRevoke }: PendingInv
   const { t } = useTranslation();
   return (
     <View className="mt-2.5 flex-row items-center gap-2.5 px-1">
-      <Circle size={11} color={colors.warn} />
-      <Text className="text-[13px] text-warn">{invite.email}</Text>
+      <View className="h-[7px] w-[7px] rounded-full border-[1.5px] border-warn" />
+      <Text className="font-mono text-[12.5px] text-warn">{invite.email}</Text>
       <Text className="flex-1 text-xs text-muted">{t("projectDetail.inviteAwaiting")}</Text>
       {canRevoke ? <RevokeButton revoking={revoking} onPress={() => onRevoke(invite)} /> : null}
     </View>
@@ -153,8 +155,13 @@ export default function ProjectDetailScreen() {
 
       {project ? (
         <>
-          <Text className="mt-1 text-[26px] font-bold text-fg">{project.name}</Text>
-          <Text className="mt-0.5 text-[13px] text-muted">{summary}</Text>
+          <View className="mt-1 flex-row items-center gap-[13px]">
+            <ProjectTile initials={projectInitials(project.name)} size="lg" />
+            <View className="min-w-0 flex-1">
+              <Text className="text-[22px] font-bold text-fg">{project.name}</Text>
+              <Text className="mt-px text-[12.5px] text-muted">{summary}</Text>
+            </View>
+          </View>
 
           {loadingDetail && members.length === 0 && !canAdmin ? <MembersSkeleton /> : null}
           {members.length > 0 || canAdmin ? (

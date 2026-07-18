@@ -37,6 +37,7 @@ function HostSection({
               name={host.name}
               target={host.target}
               status={host.status}
+              rttMs={host.rttMs}
               onPress={() => onOpenHost(host.id, host.projectId)}
             />
           </Fragment>

@@ -11,7 +11,31 @@ function DetailRow({ label, value }: { readonly label: string; readonly value: s
   return (
     <View className="flex-row items-center gap-3 px-4 py-3.5">
       <Text className="flex-1 text-[15px] text-muted">{label}</Text>
-      <Text className="font-mono text-[15px] text-fg">{value}</Text>
+      <Text className="font-mono text-[14px] text-fg">{value}</Text>
+    </View>
+  );
+}
+
+// A single tag rendered as a pill chip (v2 host detail): the tags row shows these
+// wrapped and right-aligned instead of a comma-joined string.
+function TagChip({ label }: { readonly label: string }) {
+  return (
+    <View className="rounded-full border border-borderStrong bg-chip px-2.5 py-1">
+      <Text className="font-mono text-[11px] text-dim">{label}</Text>
+    </View>
+  );
+}
+
+// The tags row: muted label on the left, right-aligned wrapped chips.
+function TagsRow({ label, tags }: { readonly label: string; readonly tags: readonly string[] }) {
+  return (
+    <View className="flex-row items-center gap-3 px-4 py-3.5">
+      <Text className="text-[15px] text-muted">{label}</Text>
+      <View className="flex-1 flex-row flex-wrap justify-end gap-1.5">
+        {tags.map((tag) => (
+          <TagChip key={tag} label={tag} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -41,7 +65,7 @@ function StatusRow({
 function ProjectBadge({ projectName }: { readonly projectName: string }) {
   const { t } = useTranslation();
   return (
-    <View className="mt-6 flex-row items-start gap-2 rounded-field border border-borderSoft bg-surface px-3 py-2.5">
+    <View className="mt-6 flex-row items-start gap-2 rounded-field border border-borderFaint bg-surface px-3 py-2.5">
       <FolderGit2 size={16} color={colors.muted} />
       <View className="flex-1">
         <Text className="text-xs font-semibold text-fg">{t("hostDetail.projectBadge")}</Text>
@@ -121,6 +145,7 @@ export default function HostDetailScreen() {
             <Button
               label={t("terminal.connect")}
               variant="accent"
+              glyph="❯_"
               onPress={openTerminal}
               testID="host-detail-connect"
             />
@@ -137,7 +162,7 @@ export default function HostDetailScreen() {
               {host.tags && host.tags.length > 0 ? (
                 <>
                   <RowDivider />
-                  <DetailRow label={t("hostDetail.tags")} value={host.tags.join(", ")} />
+                  <TagsRow label={t("hostDetail.tags")} tags={host.tags} />
                 </>
               ) : null}
             </Card>
@@ -146,7 +171,7 @@ export default function HostDetailScreen() {
             <View className="mt-6">
               <Button
                 label={t("hostForm.delete")}
-                variant="outline"
+                variant="danger"
                 onPress={onDelete}
                 loading={isDeleting}
                 testID="host-detail-delete"

@@ -45,7 +45,7 @@ export function FormField({
       </Text>
       <TextInput
         className={cn(
-          "h-12 rounded-field border bg-surface px-3.5 font-mono text-[15px] text-fg",
+          "h-[54px] rounded-btn border bg-surface px-3.5 font-mono text-[15px] text-fg",
           error ? "border-danger" : "border-border",
         )}
         value={value}

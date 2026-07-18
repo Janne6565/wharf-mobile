@@ -1,18 +1,23 @@
-import { Copy, Fingerprint, ShieldCheck } from "lucide-react-native";
+import { CircleCheck, Copy } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { Card, ScreenContainer, ScreenTitle, SectionLabel } from "@/components";
 import type { KeyIdentity } from "@/features/keys/useKeysLogic";
 import { useKeysLogic } from "@/features/keys/useKeysLogic";
 import { colors } from "@/theme/colors";
+import { hexToRgba } from "@/theme/effects";
 import { useAccentColor } from "@/theme/useAccentColor";
+
+// The device identity is always an ed25519 keypair (see useKeysLogic / PLAN.md);
+// KeyIdentity carries no algorithm field, so the pill label is a fixed constant.
+const IDENTITY_ALGORITHM = "ed25519";
 
 function SshNote() {
   const { t } = useTranslation();
   return (
-    <View className="mt-5 flex-row items-start gap-2 rounded-field border border-borderSoft bg-surface px-3 py-2.5">
-      <ShieldCheck size={16} color={colors.muted} />
-      <Text className="flex-1 text-xs leading-5 text-muted">{t("keys.sshNote")}</Text>
+    <View className="mt-5 flex-row items-start gap-2.5 rounded-field border border-borderFaint bg-surface px-3.5 py-3">
+      <CircleCheck size={18} color={colors.muted} />
+      <Text className="flex-1 text-[12.5px] leading-5 text-muted">{t("keys.sshNote")}</Text>
     </View>
   );
 }
@@ -36,12 +41,22 @@ function IdentityCard({
       <SectionLabel>{t("keys.identityTitle")}</SectionLabel>
       <Card>
         <View className="px-4 py-3.5">
-          <Text className="text-xs text-muted">{t("keys.createdAt", { date: created })}</Text>
-          <View className="mt-3 flex-row items-center gap-2">
-            <Fingerprint size={15} color={colors.dim} />
-            <Text className="text-xs text-muted">{t("keys.fingerprintLabel")}</Text>
+          <View className="flex-row items-center gap-2">
+            <Text
+              className="rounded-full border px-2.5 py-1 font-mono text-[11px] text-accent"
+              style={{
+                backgroundColor: hexToRgba(accent, 0.12),
+                borderColor: hexToRgba(accent, 0.35),
+              }}
+            >
+              {IDENTITY_ALGORITHM}
+            </Text>
+            <Text className="text-xs text-muted">{t("keys.createdAt", { date: created })}</Text>
           </View>
-          <Text className="mt-1 font-mono text-[13px] text-fgSoft">{identity.fingerprint}</Text>
+          <Text className="mt-3.5 text-xs text-muted">{t("keys.fingerprintLabel")}</Text>
+          <View className="mt-1.5 rounded-tile border border-borderFaint bg-well px-3.5 py-3">
+            <Text className="font-mono text-xs leading-5 text-fgSoft">{identity.fingerprint}</Text>
+          </View>
           <Pressable
             onPress={onCopy}
             accessibilityRole="button"
@@ -49,7 +64,7 @@ function IdentityCard({
             testID="keys-copy"
           >
             <Copy size={15} color={accent} />
-            <Text className="text-[13px] text-accent">{t("keys.copy")}</Text>
+            <Text className="text-[13.5px] font-semibold text-accent">{t("keys.copy")}</Text>
           </Pressable>
         </View>
       </Card>

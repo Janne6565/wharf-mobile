@@ -17,17 +17,20 @@ import { useAccentColor } from "@/theme/useAccentColor";
 function BiometricRow() {
   const { t } = useTranslation();
   const accent = useAccentColor();
-  const { enrolled, canToggle, toggle } = useBiometricToggle({
+  const { enrolled, available, busy, toggle } = useBiometricToggle({
     enrollPrompt: t("unlock.biometricPrompt"),
   });
   return (
     <SettingsRow
       label={t("settings.biometricUnlock")}
-      value={canToggle ? undefined : t("settings.biometricUnavailable")}
+      // Show the "unavailable" hint only when the device genuinely lacks
+      // biometric capability — never during a change in flight or after
+      // disabling on a capable device.
+      value={available ? undefined : t("settings.biometricUnavailable")}
       accessory={
         <Switch
           value={enrolled}
-          disabled={!canToggle}
+          disabled={(!enrolled && !available) || busy}
           onValueChange={(next) => void toggle(next)}
           trackColor={{ false: colors.border, true: accent }}
           testID="biometric-toggle"
@@ -111,7 +114,7 @@ export default function SettingsScreen() {
       <View className="mt-5">
         <SectionLabel>{t("settings.about")}</SectionLabel>
         <Card>
-          <SettingsRow label={t("settings.version")} value={version} />
+          <SettingsRow label={t("settings.version")} value={version} monoValue />
           {showDeveloper ? (
             <>
               <RowDivider />

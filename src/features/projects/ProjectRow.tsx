@@ -4,7 +4,8 @@ import { Pressable, Text, View } from "react-native";
 import { RoleChip } from "@/components";
 import type { StoredProject } from "@/store/projectsSlice";
 import { colors } from "@/theme/colors";
-import { ROLE_LABEL_KEY } from "./lib";
+import { projectInitials, ROLE_LABEL_KEY } from "./lib";
+import { ProjectTile } from "./ProjectTile";
 
 interface ProjectRowProps {
   readonly project: StoredProject;
@@ -21,6 +22,7 @@ export function ProjectRow({ project, onPress }: ProjectRowProps) {
       accessibilityRole="button"
       className="flex-row items-center gap-3 px-4 py-3"
     >
+      <ProjectTile initials={projectInitials(project.name)} />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-2">
           <Text className="text-[15px] font-semibold text-fg">{project.name}</Text>

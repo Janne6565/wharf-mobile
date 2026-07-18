@@ -1,6 +1,7 @@
 import "@/i18n/config";
 import { fireEvent, waitFor } from "@testing-library/react-native";
 import { store } from "@/store";
+import { probeResulted } from "@/store/probesSlice";
 import { vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import HostsScreen from "../../../app/(tabs)/hosts/index";
@@ -28,7 +29,8 @@ describe("HostsScreen", () => {
     store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
     const { getByText } = await renderWithProviders(<HostsScreen />);
 
-    expect(getByText("Hosts")).toBeOnTheScreen();
+    // v2 ScreenTitle prefixes the mono title with an accent `❯` prompt.
+    expect(getByText("❯ Hosts")).toBeOnTheScreen();
     expect(getByText("PERSONAL")).toBeOnTheScreen();
     expect(getByText("homelab")).toBeOnTheScreen();
     expect(getByText("deniz@homelab.local:22")).toBeOnTheScreen();
@@ -58,6 +60,14 @@ describe("HostsScreen", () => {
       pathname: "/(tabs)/hosts/[hostId]",
       params: { hostId: "h1" },
     });
+  });
+
+  it("renders the probe RTT inline for a reachable host", async () => {
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, version: 1 }));
+    store.dispatch(probeResulted({ hostId: "h1", status: "online", rttMs: 12 }));
+    const { getByText } = await renderWithProviders(<HostsScreen />);
+
+    expect(getByText("12ms")).toBeOnTheScreen();
   });
 
   it("shows the empty state when the vault has no hosts", async () => {

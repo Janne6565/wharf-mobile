@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { showToast } from "@/store/toastSlice";
 import { setBiometricEnrolled } from "@/store/vaultSlice";
-import { clearBiometricDek } from "@/vault/biometric";
-import { canOfferBiometricEnrollment, enrollBiometricsForSession } from "@/vault/unlock";
+import { canEnrollBiometrics, clearBiometricDek } from "@/vault/biometric";
+import { enrollBiometricsForSession } from "@/vault/unlock";
 
 interface UseBiometricToggleParams {
   // The OS biometric prompt label, translated by the caller (Android shows it on
@@ -12,24 +12,26 @@ interface UseBiometricToggleParams {
 }
 
 // Owns the Settings biometric-unlock toggle. `enrolled` mirrors the cached-DEK
-// state from the vault slice; `available` gates the switch on device capability
-// (hardware + OS enrolment) when nothing is cached yet. Toggling on enrolls the
-// current session's DEK behind the biometric gate; toggling off drops it. Every
-// outcome raises a toast so the switch never flips silently.
+// state from the vault slice; `available` reports pure device capability
+// (biometric hardware + an OS enrolment) and is independent of whether a DEK is
+// currently cached — so disabling biometrics on a capable device leaves the
+// switch re-enableable. Toggling on enrolls the current session's DEK behind the
+// biometric gate; toggling off drops it. Every outcome raises a toast so the
+// switch never flips silently.
 export function useBiometricToggle({ enrollPrompt }: UseBiometricToggleParams) {
   const dispatch = useAppDispatch();
   const enrolled = useAppSelector((state) => state.vault.biometricEnrolled);
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // A device can offer enrolment when it has biometric hardware with an OS
-  // enrolment and no DEK cached yet. When already enrolled the toggle stays
-  // usable (to disable), so availability only gates the not-yet-enrolled case.
+  // Device capability only: biometric hardware present with an OS enrolment.
+  // This must NOT depend on the cached-DEK state, otherwise disabling biometrics
+  // would strand the switch off (nothing enrolled + captured-false availability).
   useEffect(() => {
     let active = true;
-    void canOfferBiometricEnrollment().then((canOffer) => {
+    void canEnrollBiometrics().then((capable) => {
       if (active) {
-        setAvailable(canOffer);
+        setAvailable(capable);
       }
     });
     return () => {
@@ -65,6 +67,10 @@ export function useBiometricToggle({ enrollPrompt }: UseBiometricToggleParams) {
 
   return {
     enrolled,
+    // Pure device capability — the screen shows the "unavailable" value only when
+    // this is false, never for the enrolled/busy cases.
+    available,
+    busy,
     // The switch is interactive when already enrolled (to turn off) or when the
     // device can enroll (to turn on), and never while a change is in flight.
     canToggle: (enrolled || available) && !busy,

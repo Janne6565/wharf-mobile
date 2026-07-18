@@ -8,7 +8,7 @@ interface AvatarProps {
 // initials. Purely decorative — the adjacent name/email is the accessible label.
 export function Avatar({ initials }: AvatarProps) {
   return (
-    <View className="h-8 w-8 items-center justify-center rounded-full bg-avatar">
+    <View className="h-8 w-8 items-center justify-center rounded-full border border-borderStrong bg-avatar">
       <Text className="font-mono text-[13px] text-accent">{initials}</Text>
     </View>
   );

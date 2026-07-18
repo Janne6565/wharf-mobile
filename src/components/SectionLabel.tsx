@@ -4,10 +4,11 @@ interface SectionLabelProps {
   readonly children: string;
 }
 
-// Uppercase, wide-tracked grouped-list header (e.g. PERSONAL, MEMBERS, HOSTS).
+// Mono, uppercase, wide-tracked grouped-list header (e.g. PERSONAL, MEMBERS,
+// HOSTS). v2 renders these in the mono type family.
 export function SectionLabel({ children }: SectionLabelProps) {
   return (
-    <Text className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">
+    <Text className="mb-2 font-mono text-[11px] uppercase tracking-widest text-muted">
       {children}
     </Text>
   );

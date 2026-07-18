@@ -17,6 +17,9 @@ export interface HostRowData {
   readonly name: string;
   readonly target: string;
   readonly status: HostStatus;
+  // The last measured probe RTT (ms); set only when a probe result exists. The
+  // row gates display on online/degraded status.
+  readonly rttMs?: number;
   // Set for a project host so navigation can tag the detail with its project.
   readonly projectId?: string;
 }
@@ -62,6 +65,7 @@ export function useHostsLogic() {
           name: host.name,
           target: hostTarget(host),
           status: probeResults[host.id]?.status ?? "unknown",
+          ...(probeResults[host.id] ? { rttMs: probeResults[host.id].rttMs } : {}),
           ...(projectId ? { projectId } : {}),
         })),
       };

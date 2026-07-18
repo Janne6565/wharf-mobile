@@ -86,8 +86,8 @@ export default function TerminalScreen() {
   const logic = useTerminalLogic();
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-shell">
-      <View className="flex-row items-center border-b border-borderSoft px-3 py-2.5">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-term">
+      <View className="flex-row items-center border-b border-termBorder bg-shell px-3 py-2.5">
         <Pressable onPress={logic.close} accessibilityRole="button" testID="terminal-back">
           <ChevronLeft size={26} color={accent} />
         </Pressable>

@@ -35,3 +35,16 @@ export function avatarInitials(text: string): string {
       : local.replace(/[^a-zA-Z0-9]/g, "").slice(0, 2);
   return (letters || "?").toUpperCase();
 }
+
+// Uppercase initials for a project's square tile (v2). Takes the first letter of
+// each of the first two words; a single-word name uses its first two characters.
+// Empty/whitespace input falls back to "?".
+export function projectInitials(name: string): string {
+  const cleaned = name.trim();
+  if (!cleaned) {
+    return "?";
+  }
+  const words = cleaned.split(/\s+/).filter((w) => w.length > 0);
+  const letters = words.length >= 2 ? `${words[0][0]}${words[1][0]}` : cleaned.slice(0, 2);
+  return (letters || "?").toUpperCase();
+}

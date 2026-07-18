@@ -1,5 +1,7 @@
 import { Pressable, ScrollView, Text } from "react-native";
 import { cn } from "@/lib/cn";
+import { hexToRgba } from "@/theme/effects";
+import { useAccentColor } from "@/theme/useAccentColor";
 import type { AccessoryKey, ModifierKey, Modifiers } from "./lib";
 
 // The mock's key accessory row: `esc ⇥ ctrl alt / ~ ↑ ↓` as mono keycaps. The
@@ -31,11 +33,13 @@ const KEYCAPS: readonly Keycap[] = [
 function Cap({
   cap,
   armed,
+  accent,
   onKey,
   onModifier,
 }: {
   readonly cap: Keycap;
   readonly armed: boolean;
+  readonly accent: string;
   readonly onKey: (key: AccessoryKey) => void;
   readonly onModifier: (which: ModifierKey) => void;
 }) {
@@ -52,10 +56,14 @@ function Cap({
       accessibilityState={{ selected: armed }}
       onPress={onPress}
       testID={`termkey-${cap.modifier ?? cap.accessory}`}
-      className={cn(
-        "rounded-lg border px-3 py-1.5",
-        armed ? "border-accent bg-accent/20" : "border-transparent bg-surface",
-      )}
+      className="rounded-[9px] border border-borderInput bg-cardTop px-[11px] py-1.5"
+      // Armed modifiers tint with the live accent — derived at runtime since the
+      // accent is user-switchable and cannot be baked into a Tailwind token.
+      style={
+        armed
+          ? { backgroundColor: hexToRgba(accent, 0.18), borderColor: hexToRgba(accent, 0.4) }
+          : undefined
+      }
     >
       <Text className={cn("font-mono text-[13px]", armed ? "text-accent" : "text-fgSoft")}>
         {cap.label}
@@ -65,6 +73,7 @@ function Cap({
 }
 
 export function KeyAccessoryRow({ modifiers, onKey, onModifier }: KeyAccessoryRowProps) {
+  const accent = useAccentColor();
   return (
     <ScrollView
       horizontal
@@ -75,7 +84,7 @@ export function KeyAccessoryRow({ modifiers, onKey, onModifier }: KeyAccessoryRo
       // The bar chrome (top border + raised bg) lives here, not on the content container:
       // a horizontal ScrollView's content container is only as wide as its keycaps, so the
       // chrome would stop short of the screen edge — on the ScrollView it spans full width.
-      className="grow-0 shrink-0 border-t border-borderSoft bg-shellRaised"
+      className="grow-0 shrink-0 border-t border-termBorder bg-shell"
       // grow (flexGrow:1) makes the content at least viewport-wide so justify-between can
       // spread the keycaps edge-to-edge; when they overflow a narrow screen the gap holds
       // spacing and the row scrolls horizontally as before.
@@ -86,6 +95,7 @@ export function KeyAccessoryRow({ modifiers, onKey, onModifier }: KeyAccessoryRo
           key={cap.label}
           cap={cap}
           armed={Boolean(cap.modifier) && modifiers[cap.modifier as ModifierKey]}
+          accent={accent}
           onKey={onKey}
           onModifier={onModifier}
         />

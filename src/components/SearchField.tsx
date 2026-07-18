@@ -12,7 +12,7 @@ interface SearchFieldProps {
 // surface. Controlled by the owning screen's logic hook.
 export function SearchField({ placeholder, value, onChangeText }: SearchFieldProps) {
   return (
-    <View className="h-10 flex-row items-center gap-2 rounded-field bg-surface px-3.5">
+    <View className="h-[42px] flex-row items-center gap-2 rounded-field border border-borderInput bg-surface px-3.5">
       <Search size={16} color={colors.muted} />
       <TextInput
         className="flex-1 py-0 text-[15px] text-fg"

@@ -15,7 +15,8 @@ export function RoleChip({ label, variant = "plain" }: RoleChipProps) {
     <Text
       className={cn(
         "text-[13px] text-muted",
-        variant === "pill" && "rounded-field bg-surface px-2 py-0.5 text-xs",
+        variant === "pill" &&
+          "rounded-full border border-borderStrong bg-chip px-2.5 py-1 font-mono text-[11px] text-dim",
       )}
     >
       {label}

@@ -1,9 +1,14 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { BottomTabBarHeightContext } from "expo-router/js-tabs";
 import { type ReactNode, useContext } from "react";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { cn } from "@/lib/cn";
 import { liquidGlassAvailable } from "@/lib/liquidGlass";
+import { colors } from "@/theme/colors";
+
+// The v2 header gradient fades shellTop→shell over the top of every screen.
+const HEADER_GRADIENT_HEIGHT = 260;
 
 interface ScreenContainerProps {
   readonly children: ReactNode;
@@ -22,6 +27,11 @@ export function ScreenContainer({ children, className }: ScreenContainerProps) {
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-shell">
+      <LinearGradient
+        colors={[colors.shellTop, colors.shell]}
+        pointerEvents="none"
+        style={{ position: "absolute", left: 0, right: 0, top: 0, height: HEADER_GRADIENT_HEIGHT }}
+      />
       <View className={cn("flex-1 px-5", className)} style={{ paddingBottom }}>
         {children}
       </View>

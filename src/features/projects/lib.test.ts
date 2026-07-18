@@ -1,4 +1,4 @@
-import { avatarInitials, ROLE_LABEL_KEY } from "./lib";
+import { avatarInitials, projectInitials, ROLE_LABEL_KEY } from "./lib";
 
 describe("avatarInitials", () => {
   it("takes the first letters of a dotted email local-part", () => {
@@ -16,6 +16,25 @@ describe("avatarInitials", () => {
 
   it("returns a placeholder for empty input", () => {
     expect(avatarInitials("   ")).toBe("?");
+  });
+});
+
+describe("projectInitials", () => {
+  it("takes the first letter of the first two words", () => {
+    expect(projectInitials("Atlas Platform")).toBe("AP");
+    expect(projectInitials("Beacon Ops Prod")).toBe("BO");
+  });
+
+  it("uses the first two characters of a single-word name", () => {
+    expect(projectInitials("Nebula")).toBe("NE");
+  });
+
+  it("collapses extra whitespace between words", () => {
+    expect(projectInitials("  Homelab   Shared ")).toBe("HS");
+  });
+
+  it("returns a placeholder for empty input", () => {
+    expect(projectInitials("   ")).toBe("?");
   });
 });
 

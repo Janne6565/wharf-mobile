@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { store } from "@/store";
+import { setLanguage } from "@/store/settingsSlice";
 import { type AppLanguage, defaultNS, resources } from "./resources";
 
 // Persisted under an app-prefixed key. On native there is no synchronous storage,
@@ -29,8 +31,11 @@ if (!i18n.isInitialized) {
 export async function loadPersistedLanguage(): Promise<void> {
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
-    if (isSupported(stored) && stored !== i18n.language) {
-      await i18n.changeLanguage(stored);
+    if (isSupported(stored)) {
+      store.dispatch(setLanguage(stored));
+      if (stored !== i18n.language) {
+        await i18n.changeLanguage(stored);
+      }
     }
   } catch {
     // AsyncStorage unavailable — keep the fallback language.
@@ -39,6 +44,7 @@ export async function loadPersistedLanguage(): Promise<void> {
 
 // Switches the active language and persists the choice.
 export async function persistLanguage(language: AppLanguage): Promise<void> {
+  store.dispatch(setLanguage(language));
   await i18n.changeLanguage(language);
   try {
     await AsyncStorage.setItem(STORAGE_KEY, language);
