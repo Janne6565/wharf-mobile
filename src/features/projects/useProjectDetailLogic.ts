@@ -159,10 +159,17 @@ export function useProjectDetailLogic() {
   });
 
   // Project hosts open the shared host detail, tagged with the projectId so the
-  // detail resolves the host from the project view and renders it read-only.
+  // detail resolves the host from the project view and renders it read-only. The
+  // `from: "project"` marker records the navigation origin: the host detail lives in
+  // the Hosts tab's stack, so a plain router.back() there would pop that stack (to the
+  // Hosts overview) rather than return here — the marker lets it navigate back to this
+  // project instead. (Opening the same host from the Hosts tab carries no marker.)
   const openHost = useCallback(
     (hostId: string) => {
-      router.push({ pathname: "/(tabs)/hosts/[hostId]", params: { hostId, projectId } });
+      router.push({
+        pathname: "/(tabs)/hosts/[hostId]",
+        params: { hostId, projectId, from: "project" },
+      });
     },
     [router, projectId],
   );

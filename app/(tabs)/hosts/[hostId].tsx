@@ -86,6 +86,7 @@ export default function HostDetailScreen() {
     status,
     rttMs,
     isProjectHost,
+    cameFromProject,
     projectName,
     goBack,
     openEdit,
@@ -93,6 +94,12 @@ export default function HostDetailScreen() {
     confirmDelete,
     isDeleting,
   } = useHostDetailLogic();
+
+  // When the user came from a project detail, the back link points back to that
+  // project — labelled with its name, or a generic "Project" when it's unavailable.
+  const backLabel = cameFromProject
+    ? (projectName ?? t("hostDetail.backToProject"))
+    : t("hostDetail.back");
 
   const statusLabel = t(`hosts.status.${status}`);
   // Append the dial RTT only for a reachable host (online/degraded); offline and
@@ -122,7 +129,7 @@ export default function HostDetailScreen() {
           className="-ml-1 flex-row items-center py-2"
         >
           <ChevronLeft size={22} color={accent} />
-          <Text className="text-[15px] text-accent">{t("hostDetail.back")}</Text>
+          <Text className="text-[15px] text-accent">{backLabel}</Text>
         </Pressable>
         {showActions ? (
           <Pressable

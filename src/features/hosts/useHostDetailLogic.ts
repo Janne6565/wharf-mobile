@@ -23,7 +23,11 @@ export interface DeleteConfirmCopy {
 }
 
 export function useHostDetailLogic() {
-  const { hostId, projectId } = useLocalSearchParams<{ hostId: string; projectId?: string }>();
+  const { hostId, projectId, from } = useLocalSearchParams<{
+    hostId: string;
+    projectId?: string;
+    from?: string;
+  }>();
   const router = useRouter();
 
   const personalHost = useAppSelector((state) => state.vault.hosts.find((h) => h.id === hostId));
@@ -45,9 +49,21 @@ export function useHostDetailLogic() {
   const status: HostStatus = probeResult?.status ?? "unknown";
   const rttMs = probeResult?.rttMs ?? -1;
 
+  // True when the user arrived here from a project detail (Projects tab). The host
+  // detail lives in the Hosts tab's stack, so this push crossed tab stacks — a plain
+  // router.back() would pop the Hosts stack to the Hosts overview, not the project.
+  const cameFromProject = from === "project" && Boolean(projectId);
+
   const goBack = useCallback(() => {
+    // Coming from a project, back() can't cross tab stacks to reach the project, so
+    // navigate to the existing project-detail entry (navigate reuses it rather than
+    // pushing a duplicate). Otherwise back() pops the Hosts stack as normal.
+    if (cameFromProject && projectId) {
+      router.navigate({ pathname: "/(tabs)/projects/[projectId]", params: { projectId } });
+      return;
+    }
     router.back();
-  }, [router]);
+  }, [router, cameFromProject, projectId]);
 
   const openEdit = useCallback(() => {
     if (hostId) {
@@ -87,6 +103,7 @@ export function useHostDetailLogic() {
     status,
     rttMs,
     isProjectHost,
+    cameFromProject,
     projectName: project?.name,
     goBack,
     openEdit,

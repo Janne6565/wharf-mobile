@@ -88,6 +88,7 @@ const enCommon = {
   },
   hostDetail: {
     back: "Hosts",
+    backToProject: "Project",
     user: "User",
     address: "Address",
     port: "Port",
@@ -422,6 +423,7 @@ const deCommon: CommonSchema = {
   },
   hostDetail: {
     back: "Hosts",
+    backToProject: "Projekt",
     user: "Benutzer",
     address: "Adresse",
     port: "Port",
