@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 4c043c1.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ c9d146b.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -25,6 +25,17 @@ only ever holds ciphertext.
     TestFlight/Play release, on-hardware crypto self-test (Settings → Developer,
     dev builds). Mobile v1 boundary: NO rotation/removal/role-change endpoints
     surfaced. Plan in repo `docs/PLAN.md`.
+    **Project lifecycle + host context menu (2026-07-18):** Projects tab now
+    creates projects (ported web `buildCreateProject`: fresh DEK → empty WHARFP
+    blob byte-parity with web/TUI → DEK sealed to own pubkey) and manages them —
+    rename/re-describe (admin+), delete (owner), leave (non-owner) — still no
+    rotation/role-change. Hosts tab: long-press menu (Connect / Edit / Move to
+    Project / Delete; project hosts Connect-only). "Move to Project" is the
+    FIRST mobile project-vault write (`src/sync/projectVaultWrite.ts`): RMW of
+    the freshly fetched blob, 409 rebase ×3; the host's RAW JSON is copied from
+    the personal payload (Redux views strip passwords — never serialize them
+    into a vault), personal delete only after the project PUT lands. Project
+    sync engine itself stays pull-only.
     **Native crypto fix (2026-07-17):** react-native-libsodium's JSI only accepts
     AEAD additional_data as a UTF-8 string — impossible for the binary WHARFV/WHARFP
     header AAD, so every on-device vault open failed as "wrong master password".
