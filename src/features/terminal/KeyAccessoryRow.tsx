@@ -72,8 +72,14 @@ export function KeyAccessoryRow({ modifiers, onKey, onModifier }: KeyAccessoryRo
       showsHorizontalScrollIndicator={false}
       // RN ScrollView defaults to flexGrow 1, so inside the terminal's flex column it
       // would swallow half the height next to the flex-1 terminal — pin it to its content.
-      className="grow-0 shrink-0"
-      contentContainerClassName="flex-row gap-1.5 border-t border-borderSoft bg-shellRaised px-2.5 py-2"
+      // The bar chrome (top border + raised bg) lives here, not on the content container:
+      // a horizontal ScrollView's content container is only as wide as its keycaps, so the
+      // chrome would stop short of the screen edge — on the ScrollView it spans full width.
+      className="grow-0 shrink-0 border-t border-borderSoft bg-shellRaised"
+      // grow (flexGrow:1) makes the content at least viewport-wide so justify-between can
+      // spread the keycaps edge-to-edge; when they overflow a narrow screen the gap holds
+      // spacing and the row scrolls horizontally as before.
+      contentContainerClassName="grow flex-row items-center justify-between gap-1.5 px-2.5 py-2"
     >
       {KEYCAPS.map((cap) => (
         <Cap
