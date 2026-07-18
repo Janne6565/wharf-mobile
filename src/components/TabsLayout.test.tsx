@@ -15,7 +15,7 @@ jest.mock("expo-router", () => {
 // are out of scope for this layout test — stub it to a no-op.
 jest.mock("@/hooks/useSyncEngine", () => ({ useSyncEngine: () => {} }));
 
-import TabsLayout from "./_layout";
+import TabsLayout from "../../app/(tabs)/_layout";
 
 describe("TabsLayout", () => {
   it("registers the four tabs with translated titles", async () => {

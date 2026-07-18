@@ -3,7 +3,7 @@ import { fireEvent, waitFor } from "@testing-library/react-native";
 import { store } from "@/store";
 import { vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import HostsScreen from "./index";
+import HostsScreen from "../../../app/(tabs)/hosts/index";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({

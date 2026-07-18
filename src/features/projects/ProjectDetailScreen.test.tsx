@@ -8,7 +8,7 @@ import { sessionEstablished } from "@/store/authSlice";
 import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
 import type { ProjectView } from "@/sync/projectTypes";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import ProjectDetailScreen from "./[projectId]";
+import ProjectDetailScreen from "../../../app/(tabs)/projects/[projectId]";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({

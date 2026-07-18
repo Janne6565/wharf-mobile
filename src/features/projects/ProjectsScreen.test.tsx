@@ -4,7 +4,7 @@ import { store } from "@/store";
 import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
 import type { InviteView, ProjectView } from "@/sync/projectTypes";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import ProjectsScreen from "./index";
+import ProjectsScreen from "../../../app/(tabs)/projects/index";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => {
