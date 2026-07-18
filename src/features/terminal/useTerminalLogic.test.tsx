@@ -7,6 +7,7 @@ import { store } from "@/store";
 import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
 import { vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import { readProjectStoredPassword } from "@/sync/projectHostSecret";
+import { setProjectHostPassword } from "@/sync/projectVaultWrite";
 import { setHostPassword } from "@/vault/hostMutations";
 import { readStoredPassword } from "@/vault/hostSecret";
 // The control surface lives only on the fake; import it from the fake file
@@ -43,6 +44,11 @@ jest.mock("@/sync/projectHostSecret", () => ({
 jest.mock("@/vault/hostMutations", () => ({
   setHostPassword: jest.fn(() => Promise.resolve()),
 }));
+// A project host's remembered password is persisted into the shared project vault
+// (covered in projectVaultWrite.test); mock it here to assert the connect wiring.
+jest.mock("@/sync/projectVaultWrite", () => ({
+  setProjectHostPassword: jest.fn(() => Promise.resolve()),
+}));
 
 const mockedReadStoredPassword = readStoredPassword as jest.MockedFunction<
   typeof readStoredPassword
@@ -51,6 +57,9 @@ const mockedReadProjectStoredPassword = readProjectStoredPassword as jest.Mocked
   typeof readProjectStoredPassword
 >;
 const mockedSetHostPassword = setHostPassword as jest.MockedFunction<typeof setHostPassword>;
+const mockedSetProjectHostPassword = setProjectHostPassword as jest.MockedFunction<
+  typeof setProjectHostPassword
+>;
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 
@@ -171,8 +180,10 @@ describe("useTerminalLogic", () => {
     });
     await waitFor(() => expect(result.current.phase).toBe("connected"));
     // setHostPassword(hostId, password) runs the raw-preserving mutation
-    // (mutate.test proves unknown fields survive).
+    // (mutate.test proves unknown fields survive). The personal path never touches
+    // the shared project vault.
     await waitFor(() => expect(mockedSetHostPassword).toHaveBeenCalledWith("h1", "s3cret"));
+    expect(mockedSetProjectHostPassword).not.toHaveBeenCalled();
   });
 
   it("does not persist when 'remember' is unticked", async () => {
@@ -212,7 +223,7 @@ describe("useTerminalLogic", () => {
     expect(result.current.canRemember).toBe(true);
   });
 
-  it("hides remember and never persists the secret for a project host", async () => {
+  it("persists a remembered project-host password into the shared project vault", async () => {
     mockParams = { hostId: "h1", projectId: "proj-1" };
     store.dispatch(
       projectsLoaded({
@@ -235,7 +246,8 @@ describe("useTerminalLogic", () => {
     );
 
     const { result } = await mount();
-    expect(result.current.canRemember).toBe(false);
+    // A project host can now remember its password.
+    expect(result.current.canRemember).toBe(true);
 
     await emitSecretPrompt({ promptId: "s4", kind: "password", prompt: "", echo: false });
     await waitFor(() => expect(result.current.secretPrompt?.kind).toBe("password"));
@@ -247,8 +259,11 @@ describe("useTerminalLogic", () => {
       __resolveConnect();
     });
     await waitFor(() => expect(result.current.phase).toBe("connected"));
-    // "remember" was ticked, but a project host cannot persist into the personal
-    // vault — so the tick is dropped, not silently no-oped after the fact.
+    // The remembered password is written to the shared project vault — not the
+    // personal one.
+    await waitFor(() =>
+      expect(mockedSetProjectHostPassword).toHaveBeenCalledWith("proj-1", "h1", "s3cret"),
+    );
     expect(mockedSetHostPassword).not.toHaveBeenCalled();
   });
 

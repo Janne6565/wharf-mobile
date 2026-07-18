@@ -15,7 +15,11 @@ import { fromBase64, openDek, openProject, sealProject, toBase64 } from "@/crypt
 import { store } from "@/store";
 import { deleteHost } from "@/vault/hostMutations";
 import { ensureIdentity, type IdentityKeys, type IdentityStatus } from "@/vault/identity";
-import { addRawHostToPayload, extractRawHostFromPayload } from "@/vault/mutate";
+import {
+  addRawHostToPayload,
+  extractRawHostFromPayload,
+  setHostPasswordInPayload,
+} from "@/vault/mutate";
 import { getVaultSession } from "@/vault/vaultSession";
 import { runProjectsSync } from "./projectsEngine";
 
@@ -166,5 +170,43 @@ export async function moveHostToProject(
   );
 
   await deps.deleteHost(hostId);
+  void deps.runProjectsSync();
+}
+
+// setProjectHostPassword stores a per-host password on a host that lives inside a
+// project vault and flips it to password auth — the project analogue of
+// vault/hostMutations.setHostPassword, called by the terminal flow when the user
+// ticks "remember" on a project host and the connect then succeeds. The password is
+// written into the SHARED project vault, so it is visible to every member's client
+// (matching the TUI's shared stored-password semantics). A HostMutationError
+// ("not-found", host removed remotely meanwhile) from the mutation propagates like
+// moveHostToProject's errors do.
+export async function setProjectHostPassword(
+  projectId: string,
+  hostId: string,
+  password: string,
+  deps: ProjectWriteDeps = defaultDeps,
+): Promise<void> {
+  const session = deps.getVaultSession();
+  if (!session) {
+    throw new ProjectWriteError("locked");
+  }
+
+  const identity = await deps.ensureIdentity(deps.getVaultVersion());
+  if (identity.kind !== "ready") {
+    throw new ProjectWriteError("needs-sync");
+  }
+
+  await mutateProjectVault(
+    projectId,
+    identity.keys,
+    (payload) => setHostPasswordInPayload(payload, hostId, password),
+    deps,
+  );
+
+  // The re-pull is REQUIRED, not optional: readProjectStoredPassword reads the
+  // on-disk project cache, which only a projects sync pass refreshes. Without it the
+  // freshly-remembered password never lands in the cache, so the next connect would
+  // still prompt for it.
   void deps.runProjectsSync();
 }

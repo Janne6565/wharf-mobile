@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fromBase64, randomBytes, toBase64 } from "@/crypto";
 import { useAppSelector } from "@/store/hooks";
 import { readProjectStoredPassword } from "@/sync/projectHostSecret";
+import { setProjectHostPassword } from "@/sync/projectVaultWrite";
 import type { TerminalInbound, TerminalOutbound } from "@/terminal/protocol";
 import { useAccentColor } from "@/theme/useAccentColor";
 import { hostTarget, type VaultHost } from "@/vault/document";
@@ -89,10 +90,12 @@ export function useTerminalLogic() {
     ? project?.hosts.find((h) => h.id === hostId)
     : personalHost;
 
-  // "Remember password" only works for personal hosts: setHostPassword persists
-  // into the personal vault payload, so a project host's tick would be a silent
-  // no-op. Hide the checkbox (and never stash the secret) for project hosts.
-  const canRemember = !projectId;
+  // "Remember password" works for both personal and project hosts. A personal
+  // host persists via setHostPassword into the personal vault; a project host
+  // writes into the SHARED project vault (setProjectHostPassword), so the
+  // remembered password is visible to every member's client — matching the TUI's
+  // shared stored-password semantics.
+  const canRemember = true;
 
   const [phase, setPhase] = useState<TerminalPhase>("connecting");
   const [endedError, setEndedError] = useState<SshErrorCode | null>(null);
@@ -242,7 +245,14 @@ export function useTerminalLogic() {
       const remembered = rememberRef.current;
       rememberRef.current = null;
       if (remembered) {
-        void setHostPassword(target.id, remembered).catch(() => undefined);
+        // Fire-and-forget: a failed remember just means the next connect prompts.
+        // A project host writes into the shared project vault; a personal host into
+        // the personal vault.
+        if (projectId) {
+          void setProjectHostPassword(projectId, target.id, remembered).catch(() => undefined);
+        } else {
+          void setHostPassword(target.id, remembered).catch(() => undefined);
+        }
       }
     })();
   }, [endWith, pushToTerm, isCurrent]);
@@ -339,12 +349,14 @@ export function useTerminalLogic() {
       if (!prompt) {
         return;
       }
+      // canRemember is a constant true (both host kinds can persist); the ki guard
+      // is what keeps keyboard-interactive responses from ever being remembered.
       if (prompt.kind !== "ki" && remember && canRemember) {
         rememberRef.current = secret;
       }
       void resolveSecretPrompt(prompt.promptId, encodeUtf8(secret));
     },
-    [secretPrompt, canRemember],
+    [secretPrompt],
   );
 
   const cancelSecret = useCallback(() => {

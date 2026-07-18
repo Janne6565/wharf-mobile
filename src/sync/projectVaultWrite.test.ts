@@ -1,7 +1,12 @@
 import { fromBase64 } from "@/crypto";
 import type { IdentityStatus } from "@/vault/identity";
 import { HostMutationError } from "@/vault/mutate";
-import { moveHostToProject, type ProjectWriteDeps, ProjectWriteError } from "./projectVaultWrite";
+import {
+  moveHostToProject,
+  type ProjectWriteDeps,
+  ProjectWriteError,
+  setProjectHostPassword,
+} from "./projectVaultWrite";
 
 const enc = (s: string) => new TextEncoder().encode(s);
 const decodeVault = (base64: string) => JSON.parse(new TextDecoder().decode(fromBase64(base64)));
@@ -28,6 +33,25 @@ const PERSONAL = enc(
 
 // The decrypted project document openProject yields — an empty TUI project.
 const PROJECT_DOC = enc(JSON.stringify({ schema: 1, hosts: null }));
+
+// A project document already holding one key-auth host, to prove a remembered
+// password lands on it (with authMethod flipped) while its other fields survive.
+const PROJECT_WITH_HOST = enc(
+  JSON.stringify({
+    schema: 1,
+    hosts: [
+      {
+        id: "h1",
+        name: "web",
+        user: "deploy",
+        addr: "web.io",
+        port: 2222,
+        authMethod: "key",
+        source: "manual",
+      },
+    ],
+  }),
+);
 
 const READY: IdentityStatus = {
   kind: "ready",
@@ -152,6 +176,59 @@ describe("moveHostToProject", () => {
   it("reports needs-sync when the identity is not ready", async () => {
     const fake = makeDeps({ ensureIdentity: async () => ({ kind: "needs-sync" }) });
     await expect(moveHostToProject("h1", "p1", fake.deps)).rejects.toThrow(
+      expect.objectContaining({ code: "needs-sync" }),
+    );
+  });
+});
+
+describe("setProjectHostPassword", () => {
+  it("writes the password + password authMethod onto the host, preserving other fields", async () => {
+    const fake = makeDeps({}, PROJECT_WITH_HOST);
+    await setProjectHostPassword("p1", "h1", "s3cret", fake.deps);
+
+    const written = decodeVault(fake.update.mock.calls[0][1].vault);
+    expect(written.hosts).toHaveLength(1);
+    expect(written.hosts[0]).toMatchObject({
+      id: "h1",
+      name: "web",
+      user: "deploy",
+      addr: "web.io",
+      port: 2222,
+      source: "manual",
+      authMethod: "password",
+      password: "s3cret",
+    });
+    expect(fake.update.mock.calls[0][1].expectedVersion).toBe(5);
+  });
+
+  it("re-syncs projects after the write so the cache picks up the new password", async () => {
+    const fake = makeDeps({}, PROJECT_WITH_HOST);
+    await setProjectHostPassword("p1", "h1", "s3cret", fake.deps);
+    expect(fake.resync).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates not-found when the host was removed remotely meanwhile", async () => {
+    // The project no longer holds h1: setHostPasswordInPayload throws not-found.
+    const fake = makeDeps({}, PROJECT_DOC);
+    await expect(setProjectHostPassword("p1", "h1", "s3cret", fake.deps)).rejects.toThrow(
+      expect.objectContaining({ code: "not-found" }),
+    );
+    await expect(setProjectHostPassword("p1", "h1", "s3cret", fake.deps)).rejects.toBeInstanceOf(
+      HostMutationError,
+    );
+    expect(fake.update).not.toHaveBeenCalled();
+  });
+
+  it("reports locked when the vault session is gone", async () => {
+    const fake = makeDeps({ getVaultSession: () => null });
+    await expect(setProjectHostPassword("p1", "h1", "s3cret", fake.deps)).rejects.toThrow(
+      expect.objectContaining({ code: "locked" }),
+    );
+  });
+
+  it("reports needs-sync when the identity is not ready", async () => {
+    const fake = makeDeps({ ensureIdentity: async () => ({ kind: "needs-sync" }) });
+    await expect(setProjectHostPassword("p1", "h1", "s3cret", fake.deps)).rejects.toThrow(
       expect.objectContaining({ code: "needs-sync" }),
     );
   });

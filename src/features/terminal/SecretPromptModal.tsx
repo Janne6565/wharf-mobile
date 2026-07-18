@@ -9,8 +9,11 @@ import type { SshSecretPromptEvent } from "../../../modules/wharf-ssh";
 
 // Secret-entry sheet for a password / keyboard-interactive challenge. Retry copy
 // distinguishes a rejected password; "remember this password" is offered only for
-// password prompts (not ki) and only when the host can actually persist it
-// (`canRemember` — false for project hosts). Cancelling resolves the prompt with null.
+// password prompts (never keyboard-interactive) and only when the host can persist
+// it (`canRemember`). Both personal and project hosts can now persist — the hook
+// passes `canRemember` true for a password prompt on either — but the prop stays
+// wired so the modal keeps documenting the single gate point (e.g. ki prompts, or a
+// future host kind that cannot remember). Cancelling resolves the prompt with null.
 interface SecretPromptModalProps {
   readonly prompt: SshSecretPromptEvent | null;
   readonly canRemember: boolean;
