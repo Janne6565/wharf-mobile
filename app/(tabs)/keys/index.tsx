@@ -8,9 +8,10 @@ import { colors } from "@/theme/colors";
 import { hexToRgba } from "@/theme/effects";
 import { useAccentColor } from "@/theme/useAccentColor";
 
-// The device identity is always an ed25519 keypair (see useKeysLogic / PLAN.md);
-// KeyIdentity carries no algorithm field, so the pill label is a fixed constant.
-const IDENTITY_ALGORITHM = "ed25519";
+// The identity is the account's X25519 project-encryption keypair (used to unwrap
+// project DEKs; see useKeysLogic); KeyIdentity carries no algorithm field, so the
+// pill label is a fixed constant.
+const IDENTITY_ALGORITHM = "x25519";
 
 function SshNote() {
   const { t } = useTranslation();
