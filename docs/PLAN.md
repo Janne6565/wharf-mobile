@@ -132,7 +132,8 @@ Vault document types accept schema 1 AND 2 (`identity`); identity bootstrap writ
   *Verify:* interactive shell against a real host on physical iOS; TOFU prompt on first
   connect; stored-password replay; remember-toggle persists and syncs to the TUI.
 
-- **M8 — vault-synced SSH keys** (planned 2026-07-19, supersedes decision 5's no-key-mode):
+- **M8 — vault-synced SSH keys** (built 2026-07-19, pending on-device verify;
+  supersedes decision 5's no-key-mode; status detail in `docs/KEYSYNC.md`):
   opt-in per-key sync of SSH private keys through the personal vault (schema 3, keyfile
   bytes verbatim so passphrases stay intact), TUI sync/unsync UI + vault-key signers,
   mobile engine key auth (+ passphrase prompt kind) with password fallback, Keys tab

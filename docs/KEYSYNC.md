@@ -4,7 +4,10 @@ Goal: opt-in sync of SSH **private keys** through the personal encrypted vault, 
 mobile (and any secondary desktop) can authenticate with keys instead of falling
 back to passwords. Supersedes PLAN.md decision 5 ("no key mode on mobile").
 
-Status: **planned** (design agreed 2026-07-19; not started).
+Status: **built 2026-07-19** (W1 wharf-tui 2aa11db+b6e081c; W2 engine cd159d2;
+W3 app 0c57bfb; W4 fixtures). Pending: on-device verify against a key-only
+(`PasswordAuthentication no`) host — needs a dev-client rebuild (new xcframework
++ Swift bridge).
 
 ## Model
 
