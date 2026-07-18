@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ c1e5367.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ 4c043c1.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -57,6 +57,21 @@ only ever holds ciphertext.
     client without the native fn) leave the dot grey. Same commit batch: terminal
     key accessory row bar chrome moved onto the ScrollView (content container is
     only keycap-wide, bar looked ~80% width) with keycaps spread edge-to-edge.
+    **v2 redesign shipped (2026-07-18, verified on device):** full reskin to
+    design file "Wharf Mobile v2.dc.html" (now authoritative for mobile; v1
+    superseded; copy in `~/projects/wharf/design/`). v2 tokens in tailwind +
+    `src/theme/colors.ts` mirror, `src/theme/effects.ts` glow/shadow lib (RN 0.86
+    `boxShadow`/`textShadow` — the `filter` style prop is NOT used, not reliably
+    cross-platform), gradient cards/buttons (new dep **expo-linear-gradient** →
+    dev-client rebuild done for iPhone + iOS 26.5 sim), mono lowercase `❯`
+    screen titles, `❯_` hosts-tab glyph, WharfMark SVG + radial glow on sign-in,
+    Face-ID-circle unlock, inline probe RTT in host rows, project initials
+    tiles + accent-glow invite card, deep `#06090E` terminal theme. Same commit:
+    fixes from on-device verify — ScreenTitle min-height (tab layout shift),
+    language toggle now dispatches `setLanguage` to the store (was stuck on EN;
+    `persistLanguage`/`loadPersistedLanguage` mirror the accent pattern),
+    biometric toggle availability = device capability only (was dead after
+    disable), keyboard avoidance on unlock + sign-in email form.
   - github.com/Janne6565/wharf-deployment — Kustomize base + single `main` overlay
     (merge-to-main = prod deploy), ArgoCD app wired via cluster-deployment. Exists.
 - **Local:** clone the repo(s) above into `~/projects/wharf/<repo-name>/` (multi-repo, one
