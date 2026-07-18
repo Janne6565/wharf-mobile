@@ -83,6 +83,7 @@ export default function SettingsScreen() {
             label={t("settings.language")}
             value={language.toUpperCase()}
             onPress={toggleLanguage}
+            chevron
           />
         </Card>
       </View>
@@ -98,7 +99,7 @@ export default function SettingsScreen() {
             </>
           ) : null}
           <RowDivider />
-          <SettingsRow label={t("settings.signOut")} onPress={onSignOut} />
+          <SettingsRow label={t("settings.signOut")} onPress={onSignOut} danger />
         </Card>
       </View>
 
@@ -107,7 +108,10 @@ export default function SettingsScreen() {
         <Card>
           <BiometricRow />
           <RowDivider />
-          <SettingsRow label={t("settings.lockVault")} onPress={lock} />
+          {/* ⌃L is the TUI's lock shortcut, shown as a muted mono chip — deliberate
+              brand flavour per the mock, not translatable copy (sanctioned
+              TUI-glyph exception per REACT.md). */}
+          <SettingsRow label={t("settings.lockVault")} onPress={lock} value="⌃L" monoValue />
         </Card>
       </View>
 
@@ -118,7 +122,7 @@ export default function SettingsScreen() {
           {showDeveloper ? (
             <>
               <RowDivider />
-              <SettingsRow label={t("settings.developer")} onPress={openCryptoSelfTest} />
+              <SettingsRow label={t("settings.developer")} onPress={openCryptoSelfTest} chevron />
             </>
           ) : null}
         </Card>
