@@ -131,8 +131,8 @@ describe("ProjectDetailScreen", () => {
 
     fireEvent.press(getByText("prod-api-01"));
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/(tabs)/hosts/[hostId]",
-      params: { hostId: "h1", projectId: "p1", from: "project" },
+      pathname: "/(tabs)/projects/host/[hostId]",
+      params: { hostId: "h1", projectId: "p1" },
     });
   });
 

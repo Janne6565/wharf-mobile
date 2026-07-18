@@ -6,7 +6,7 @@
 // from the screen (t() stays in the JSX).
 
 import { useMutation } from "@tanstack/react-query";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import { useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 import type { HostStatus } from "@/components";
@@ -23,12 +23,12 @@ export interface DeleteConfirmCopy {
 }
 
 export function useHostDetailLogic() {
-  const { hostId, projectId, from } = useLocalSearchParams<{
+  const { hostId, projectId } = useLocalSearchParams<{
     hostId: string;
     projectId?: string;
-    from?: string;
   }>();
   const router = useRouter();
+  const segments = useSegments();
 
   const personalHost = useAppSelector((state) => state.vault.hosts.find((h) => h.id === hostId));
   const project = useAppSelector((state) =>
@@ -49,21 +49,18 @@ export function useHostDetailLogic() {
   const status: HostStatus = probeResult?.status ?? "unknown";
   const rttMs = probeResult?.rttMs ?? -1;
 
-  // True when the user arrived here from a project detail (Projects tab). The host
-  // detail lives in the Hosts tab's stack, so this push crossed tab stacks — a plain
-  // router.back() would pop the Hosts stack to the Hosts overview, not the project.
-  const cameFromProject = from === "project" && Boolean(projectId);
+  // True when this screen is rendering inside the PROJECTS stack — i.e. it was
+  // reached via the projects-stack re-export (segments: (tabs)/projects/host/[hostId])
+  // rather than the Hosts-tab copy ((tabs)/hosts/[hostId]). Deriving the origin from
+  // the route location (not a param) means both router.back() and the native
+  // swipe-back gesture pop within the correct stack. The same project host opened from
+  // the Hosts tab renders under the hosts stack, so this is false there.
+  const inProjectsStack = segments[1] === "projects";
+  const cameFromProject = inProjectsStack;
 
-  const goBack = useCallback(() => {
-    // Coming from a project, back() can't cross tab stacks to reach the project, so
-    // navigate to the existing project-detail entry (navigate reuses it rather than
-    // pushing a duplicate). Otherwise back() pops the Hosts stack as normal.
-    if (cameFromProject && projectId) {
-      router.navigate({ pathname: "/(tabs)/projects/[projectId]", params: { projectId } });
-      return;
-    }
-    router.back();
-  }, [router, cameFromProject, projectId]);
+  // Plain back() now works for both stacks: the project host detail lives inside the
+  // projects stack, so back() pops to the project detail directly.
+  const goBack = useCallback(() => router.back(), [router]);
 
   const openEdit = useCallback(() => {
     if (hostId) {
@@ -72,15 +69,25 @@ export function useHostDetailLogic() {
   }, [router, hostId]);
 
   // Opens the SSH terminal for this host (personal or project), carrying the
-  // projectId so the terminal resolves the right host list.
+  // projectId so the terminal resolves the right host list. When this detail is in
+  // the projects stack, the terminal is pushed there too (its projects-stack copy),
+  // so closing it pops back to the project detail rather than the Hosts tab.
   const openTerminal = useCallback(() => {
-    if (hostId) {
+    if (!hostId) {
+      return;
+    }
+    if (inProjectsStack) {
       router.push({
-        pathname: "/(tabs)/hosts/terminal",
+        pathname: "/(tabs)/projects/terminal",
         params: projectId ? { hostId, projectId } : { hostId },
       });
+      return;
     }
-  }, [router, hostId, projectId]);
+    router.push({
+      pathname: "/(tabs)/hosts/terminal",
+      params: projectId ? { hostId, projectId } : { hostId },
+    });
+  }, [router, hostId, projectId, inProjectsStack]);
 
   const deletion = useMutation({
     mutationFn: () => deleteHost(hostId ?? ""),
