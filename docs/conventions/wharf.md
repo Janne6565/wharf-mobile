@@ -1,4 +1,4 @@
-<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ c9d146b.
+<!-- AUTO-SYNCED from agents KB: projects/wharf.md @ e2916b0.
      Do NOT edit here — edit the source in ~/projects/agents and re-run scripts/sync-conventions.sh. -->
 
 # Wharf
@@ -49,8 +49,7 @@ only ever holds ciphertext.
     offline WebView asset, terminal screen per mock 03 with sticky ctrl/alt key row;
     vault lock closes all sessions; 33 MB iOS xcframework committed so builds need
     no Go toolchain (`scripts/build-ssh-engine.sh` rebuilds).
-    **Liquid Glass tab bar (2026-07-17,** pending on-device verify — needs a
-    dev-client rebuild): on iOS 26+ (`isLiquidGlassAvailable()`) the `(tabs)` bar
+    **Liquid Glass tab bar (2026-07-17,** verified on device 2026-07-18): on iOS 26+ (`isLiquidGlassAvailable()`) the `(tabs)` bar
     floats absolute/transparent over a native `GlassView` (expo-glass-effect
     ~57.0.1); `ScreenContainer` pads bottom by the bar height via
     `BottomTabBarHeightContext` from **`expo-router/js-tabs`** — SDK 57 vendors
