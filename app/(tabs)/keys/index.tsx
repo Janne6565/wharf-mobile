@@ -1,7 +1,7 @@
 import { CircleCheck, Copy } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
-import { Card, ScreenContainer, ScreenTitle, SectionLabel } from "@/components";
+import { Card, ListSkeleton, ScreenContainer, ScreenTitle, SectionLabel } from "@/components";
 import { SyncedKeysSection } from "@/features/keys/SyncedKeysSection";
 import type { KeyIdentity } from "@/features/keys/useKeysLogic";
 import { useKeysLogic } from "@/features/keys/useKeysLogic";
@@ -86,7 +86,7 @@ function EmptyState() {
 
 export default function KeysScreen() {
   const { t } = useTranslation();
-  const { identity, syncedKeys, copyPublicKey, copyKey } = useKeysLogic();
+  const { identity, syncedKeys, copyPublicKey, copyKey, showLoading } = useKeysLogic();
 
   const hasKeys = syncedKeys.length > 0;
   return (
@@ -95,7 +95,9 @@ export default function KeysScreen() {
       {hasKeys ? <SyncedKeysSection keys={syncedKeys} onCopy={copyKey} /> : null}
       {identity ? (
         <IdentityCard identity={identity} onCopy={copyPublicKey} />
-      ) : hasKeys ? null : (
+      ) : hasKeys ? null : showLoading ? (
+        <ListSkeleton testID="keys-skeleton" />
+      ) : (
         <EmptyState />
       )}
       <SshNote />

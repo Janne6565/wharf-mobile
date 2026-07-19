@@ -1,7 +1,7 @@
 import "@/i18n/config";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import { store } from "@/store";
-import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
+import { projectsLoaded, projectsReset, projectsSyncStarted } from "@/store/projectsSlice";
 import type { InviteView, ProjectView } from "@/sync/projectTypes";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import ProjectsScreen from "../../../app/(tabs)/projects/index";
@@ -97,6 +97,15 @@ describe("ProjectsScreen", () => {
     store.dispatch(projectsLoaded({ projects: [], invites: [], offline: false }));
     const { getByText } = await renderWithProviders(<ProjectsScreen />);
     expect(getByText("No projects yet")).toBeOnTheScreen();
+  });
+
+  it("shows the first-load skeleton (not the empty state) while the first pass runs", async () => {
+    // A first pass is in flight and nothing has loaded yet.
+    store.dispatch(projectsSyncStarted());
+    const { getByTestId, queryByText } = await renderWithProviders(<ProjectsScreen />);
+
+    expect(getByTestId("projects-skeleton")).toBeOnTheScreen();
+    expect(queryByText("No projects yet")).toBeNull();
   });
 
   it("renders a pending invite and accepts it", async () => {

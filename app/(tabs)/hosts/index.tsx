@@ -5,6 +5,7 @@ import {
   AddButton,
   Card,
   HostRow,
+  ListSkeleton,
   RowDivider,
   ScreenContainer,
   ScreenTitle,
@@ -68,8 +69,17 @@ function EmptyState({ title, body }: { readonly title: string; readonly body?: s
 
 export default function HostsScreen() {
   const { t } = useTranslation();
-  const { sections, query, setQuery, openHost, openAddHost, hasHosts, hasMatches } =
-    useHostsLogic();
+  const {
+    sections,
+    query,
+    setQuery,
+    openHost,
+    openAddHost,
+    hasHosts,
+    hasMatches,
+    showInitialLoading,
+    showProjectSectionsLoading,
+  } = useHostsLogic();
   const actions = useHostActionsLogic();
 
   const onLongPressHost = (host: HostRowData) =>
@@ -94,18 +104,25 @@ export default function HostsScreen() {
       </View>
       <SyncStatusBanner />
       {!hasHosts ? (
-        <EmptyState title={t("hosts.empty")} body={t("hosts.emptyBody")} />
+        showInitialLoading ? (
+          <ListSkeleton testID="hosts-skeleton" />
+        ) : (
+          <EmptyState title={t("hosts.empty")} body={t("hosts.emptyBody")} />
+        )
       ) : !hasMatches ? (
         <EmptyState title={t("hosts.noMatches")} />
       ) : (
-        sections.map((section) => (
-          <HostSection
-            key={section.key}
-            section={section}
-            onOpenHost={openHost}
-            onLongPressHost={onLongPressHost}
-          />
-        ))
+        <>
+          {sections.map((section) => (
+            <HostSection
+              key={section.key}
+              section={section}
+              onOpenHost={openHost}
+              onLongPressHost={onLongPressHost}
+            />
+          ))}
+          {showProjectSectionsLoading ? <ListSkeleton testID="hosts-project-skeleton" /> : null}
+        </>
       )}
       <HostActionSheet
         visible={actions.actionsVisible}

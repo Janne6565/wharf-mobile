@@ -2,6 +2,7 @@ import "@/i18n/config";
 import { fireEvent, screen } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
 import { store } from "@/store";
+import { syncReset, syncStarted } from "@/store/syncSlice";
 import { vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import type { VaultKeyMeta } from "@/vault/document";
@@ -36,12 +37,25 @@ describe("KeysScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     store.dispatch(vaultLocked());
+    // Keep the sync phase idle by default so the empty-state tests do not pick up
+    // a leaked "syncing" phase from the skeleton test (the store is a singleton).
+    store.dispatch(syncReset());
   });
 
-  it("shows the empty state when there are no synced keys and no identity", async () => {
+  it("shows the empty state when there are no synced keys and no first pass in flight", async () => {
     store.dispatch(vaultUnlocked({ hosts: [], keys: [], version: 0 }));
     await renderWithProviders(<KeysScreen />);
     expect(screen.getByText("Nothing synced yet")).toBeTruthy();
+  });
+
+  it("shows the first-load skeleton (not the empty state) while the first sync runs", async () => {
+    store.dispatch(vaultUnlocked({ hosts: [], keys: [], version: 0 }));
+    // A first personal sync is in flight and nothing is on screen yet.
+    store.dispatch(syncStarted());
+    await renderWithProviders(<KeysScreen />);
+
+    expect(screen.getByTestId("keys-skeleton")).toBeTruthy();
+    expect(screen.queryByText("Nothing synced yet")).toBeNull();
   });
 
   it("lists a synced key with its type pill, name and fingerprint", async () => {

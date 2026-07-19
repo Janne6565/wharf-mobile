@@ -42,16 +42,17 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("Sign out").props.className).toContain("text-danger");
   });
 
-  it("shows the lock-vault row with the ⌃L shortcut chip", async () => {
+  it("shows the lock-vault row with no value chip", async () => {
     await renderWithProviders(<SettingsScreen />);
     expect(screen.getByText("Lock vault")).toBeTruthy();
-    expect(screen.getByText("⌃L")).toBeTruthy();
+    // The old ⌃L shortcut chip is meaningless on a phone and has been removed.
+    expect(screen.queryByText("⌃L")).toBeNull();
   });
 
   it("draws chevrons only on navigating rows, not on sign-out or lock-vault", async () => {
     await renderWithProviders(<SettingsScreen />);
     // Language + the dev-only Developer row navigate (chevron); Sign out (action)
-    // and Lock vault (shortcut chip) must not add one. The old "pressable ⇒
+    // and Lock vault (action, no value) must not add one. The old "pressable ⇒
     // chevron" behaviour would push this to 4.
     expect(chevronCount()).toBe(2);
   });

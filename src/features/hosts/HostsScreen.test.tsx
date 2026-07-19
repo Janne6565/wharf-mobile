@@ -3,7 +3,7 @@ import { fireEvent, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { store } from "@/store";
 import { probeResulted } from "@/store/probesSlice";
-import { projectsLoaded, projectsReset } from "@/store/projectsSlice";
+import { projectsLoaded, projectsReset, projectsSyncStarted } from "@/store/projectsSlice";
 import { vaultLocked, vaultUnlocked } from "@/store/vaultSlice";
 import type { ProjectView } from "@/sync/projectTypes";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -119,11 +119,33 @@ describe("HostsScreen", () => {
     expect(getByText("12ms")).toBeOnTheScreen();
   });
 
-  it("shows the empty state when the vault has no hosts", async () => {
+  it("shows the empty state when the vault has no hosts and no pass is in flight", async () => {
     store.dispatch(vaultUnlocked({ hosts: [], keys: [], version: 1 }));
     const { getByText } = await renderWithProviders(<HostsScreen />);
 
     expect(getByText("No hosts yet.")).toBeOnTheScreen();
+  });
+
+  it("shows the first-load skeleton (not the empty state) while a first pass runs", async () => {
+    store.dispatch(vaultUnlocked({ hosts: [], keys: [], version: 1 }));
+    // A first projects pass is in flight and nothing is on screen yet.
+    store.dispatch(projectsSyncStarted());
+    const { getByTestId, queryByText } = await renderWithProviders(<HostsScreen />);
+
+    expect(getByTestId("hosts-skeleton")).toBeOnTheScreen();
+    expect(queryByText("No hosts yet.")).toBeNull();
+  });
+
+  it("appends a project-section skeleton below personal hosts during the first projects pass", async () => {
+    store.dispatch(vaultUnlocked({ hosts: HOSTS, keys: [], version: 1 }));
+    store.dispatch(projectsSyncStarted());
+    const { getByText, getByTestId } = await renderWithProviders(<HostsScreen />);
+
+    // Personal hosts render instantly; the incoming project sections show a
+    // placeholder until the first pass settles.
+    expect(getByText("PERSONAL")).toBeOnTheScreen();
+    expect(getByText("homelab")).toBeOnTheScreen();
+    expect(getByTestId("hosts-project-skeleton")).toBeOnTheScreen();
   });
 
   it("opens the context menu with all four actions on long-press of a personal host", async () => {

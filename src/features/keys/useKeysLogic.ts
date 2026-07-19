@@ -40,6 +40,7 @@ export function useKeysLogic() {
   const dispatch = useAppDispatch();
   const [identity, setIdentity] = useState<KeyIdentity | null>(null);
   const keys = useAppSelector((state) => state.vault.keys);
+  const syncPhase = useAppSelector((state) => state.sync.phase);
 
   const syncedKeys = useMemo<SyncedKeyView[]>(
     () =>
@@ -88,5 +89,10 @@ export function useKeysLogic() {
     [dispatch],
   );
 
-  return { identity, syncedKeys, copyPublicKey, copyKey };
+  // Keys + identity read instantly from the local vault; the async part is the
+  // first personal sync possibly delivering a newer vault. Show a skeleton (not
+  // the empty state) while nothing is on screen and that first pass is in flight.
+  const showLoading = syncedKeys.length === 0 && !identity && syncPhase === "syncing";
+
+  return { identity, syncedKeys, copyPublicKey, copyKey, showLoading };
 }

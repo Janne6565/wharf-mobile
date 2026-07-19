@@ -108,10 +108,9 @@ export default function SettingsScreen() {
         <Card>
           <BiometricRow />
           <RowDivider />
-          {/* ⌃L is the TUI's lock shortcut, shown as a muted mono chip — deliberate
-              brand flavour per the mock, not translatable copy (sanctioned
-              TUI-glyph exception per REACT.md). */}
-          <SettingsRow label={t("settings.lockVault")} onPress={lock} value="⌃L" monoValue />
+          {/* Lock vault is an action row: no chevron (not navigation) and no value
+              chip — a keyboard-shortcut hint is meaningless on a phone. */}
+          <SettingsRow label={t("settings.lockVault")} onPress={lock} />
         </Card>
       </View>
 

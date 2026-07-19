@@ -38,6 +38,9 @@ export function useHostsLogic() {
   const personal = useAppSelector((state) => state.vault.hosts);
   const projects = useAppSelector((state) => state.projects.projects);
   const probeResults = useAppSelector((state) => state.probes.results);
+  const syncPhase = useAppSelector((state) => state.sync.phase);
+  const projectsPhase = useAppSelector((state) => state.projects.phase);
+  const projectsLoaded = useAppSelector((state) => state.projects.loaded);
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -101,5 +104,26 @@ export function useHostsLogic() {
   const hasHosts = totalHosts > 0;
   const hasMatches = sections.some((section) => section.hosts.length > 0);
 
-  return { sections, query, setQuery, openHost, openAddHost, hasHosts, hasMatches };
+  // Personal hosts are instant from the unlocked vault; the projects pass is
+  // async. Show a skeleton (not the empty state) while a first pass is still in
+  // flight and nothing is on screen yet — this kills the "No hosts yet" flash on
+  // unlock before the first sync resolves.
+  const projectsFirstPassInFlight = !projectsLoaded && projectsPhase === "syncing";
+  const showInitialLoading =
+    !hasHosts && (projectsFirstPassInFlight || (personal.length === 0 && syncPhase === "syncing"));
+  // Personal hosts exist but the first projects pass is still running: append a
+  // placeholder section below the personal list for the incoming project sections.
+  const showProjectSectionsLoading = personal.length > 0 && projectsFirstPassInFlight;
+
+  return {
+    sections,
+    query,
+    setQuery,
+    openHost,
+    openAddHost,
+    hasHosts,
+    hasMatches,
+    showInitialLoading,
+    showProjectSectionsLoading,
+  };
 }
