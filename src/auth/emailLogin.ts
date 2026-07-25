@@ -20,6 +20,12 @@ export interface EmailCredentials {
 // two KEKs are genuinely different and the master key cannot be reused as the
 // vault KEK. Two argon2 passes at sign-in is therefore unavoidable; the payoff is
 // the biometric cached-DEK path, which then unlocks with zero argon2 passes.
+//
+// Failures propagate as raw Axios errors for the caller to map: besides the usual
+// 401, the backend now answers 403 with the `email_not_verified` problem code when
+// the credentials are correct but the address was never confirmed. Signing up and
+// verifying are web-only, so this app can only recognise that state and say so —
+// see useSignInLogic.
 export async function emailLogin({ email, password }: EmailCredentials): Promise<SessionResponse> {
   const normalized = normalizeEmail(email);
   const masterKey = await deriveMasterKey(password, normalized);

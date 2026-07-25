@@ -18,8 +18,11 @@ import type {
   RecoveryVerifyResponse,
   RefreshRequest,
   RegisterRequest,
+  RegistrationResponse,
+  ResendVerificationRequest,
   SessionResponse,
-  VaultUpdateResponse
+  VaultUpdateResponse,
+  VerifyEmailRequest
 } from '../model';
 
 import { customInstance } from '../../axios-instance';
@@ -31,6 +34,20 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
   export const getAuthentication = () => {
 /**
+ * Marks the address verified and issues a full session, exactly like login: in COOKIE mode the refresh token is set as an httpOnly cookie, in DIRECT mode it is returned in the body. The code expires after 15 minutes and dies after 5 failed attempts (ask for a resend). Every failure returns the same generic 400 so the endpoint is not an oracle.
+ * @summary Complete registration with the emailed 6-digit code
+ */
+const verifyEmail = (
+    verifyEmailRequest: BodyType<VerifyEmailRequest>,
+ options?: SecondParameter<typeof customInstance<SessionResponse>>,) => {
+      return customInstance<SessionResponse>(
+      {url: `/api/v1/auth/verify-email`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: verifyEmailRequest
+    },
+      options);
+    }
+  /**
  * Atomically sets the recovery key, the initial encrypted vault and (optionally) a password auth key — all-or-nothing, so an account can never end up with a recovery key but no vault. Strictly first-time: rejected with 409 if a recovery key or vault already exists, or if authKey is supplied while a password is already set. Rotation stays exclusive to recover/reset.
  * @summary One-time onboarding for an account created via OAuth
  */
@@ -45,13 +62,27 @@ const setupAccount = (
       options);
     }
   /**
- * In COOKIE mode the refresh token is set as an httpOnly cookie; in DIRECT mode it is returned in the body.
- * @summary Create a new zero-knowledge account
+ * Always 202 with no body, whether or not the address belongs to an unverified account, so it cannot be used to probe which emails are registered. Subject to a 60-second per-account cooldown, which is likewise silent.
+ * @summary Re-send the email verification code
+ */
+const resendVerification = (
+    resendVerificationRequest: BodyType<ResendVerificationRequest>,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/auth/resend-verification`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: resendVerificationRequest
+    },
+      options);
+    }
+  /**
+ * Creates the account and emails a 6-digit code. No tokens are issued and no cookie is set: the account is unusable until the code is submitted to /auth/verify-email, which is what returns the session.
+ * @summary Create a new zero-knowledge account and send a verification code
  */
 const register = (
     registerRequest: BodyType<RegisterRequest>,
- options?: SecondParameter<typeof customInstance<AuthResponse>>,) => {
-      return customInstance<AuthResponse>(
+ options?: SecondParameter<typeof customInstance<RegistrationResponse>>,) => {
+      return customInstance<RegistrationResponse>(
       {url: `/api/v1/auth/register`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: registerRequest
@@ -127,8 +158,10 @@ const login = (
     },
       options);
     }
-  return {setupAccount,register,refresh,recoverVerify,recoverReset,changePassword,login}};
+  return {verifyEmail,setupAccount,resendVerification,register,refresh,recoverVerify,recoverReset,changePassword,login}};
+export type VerifyEmailResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['verifyEmail']>>>
 export type SetupAccountResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['setupAccount']>>>
+export type ResendVerificationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['resendVerification']>>>
 export type RegisterResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['register']>>>
 export type RefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['refresh']>>>
 export type RecoverVerifyResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['recoverVerify']>>>

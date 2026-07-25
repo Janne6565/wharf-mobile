@@ -7,7 +7,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getHttpStatus } from "@/api/httpError";
+import { WEB_HOST } from "@/api/axios-instance";
+import { EMAIL_NOT_VERIFIED_CODE, getHttpStatus, getProblemCode } from "@/api/httpError";
 import { pairDevice } from "@/auth/pairing";
 import { establishSession } from "@/auth/session";
 import { formatPairingCode, isCompletePairingCode, rawPairingCode } from "./lib";
@@ -31,7 +32,12 @@ export function usePairLogic() {
     },
     onError: (error: unknown) => {
       const status = getHttpStatus(error);
-      if (status === 429) {
+      if (status === 403 && getProblemCode(error) === EMAIL_NOT_VERIFIED_CODE) {
+        // The code itself was fine; the account behind it is unverified. The
+        // backend rolls the exchange back, so the code is NOT burned — the same
+        // one still works after verifying, which the message says explicitly.
+        setSubmitError(t("pair.errors.emailNotVerified", { host: WEB_HOST }));
+      } else if (status === 429) {
         setSubmitError(t("pair.errors.rateLimited"));
       } else if (status !== undefined) {
         // Any explicit rejection (404/410/422…) means the code is bad/expired.

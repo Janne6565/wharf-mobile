@@ -32,8 +32,14 @@ const enCommon = {
       invalidCredentials: "Email or password is incorrect.",
       rateLimited: "Too many attempts. Try again in a moment.",
       generic: "Sign-in failed. Check your connection and try again.",
+      emailNotVerified:
+        "This account isn't verified yet. Check your inbox and confirm your email at {{host}}, then sign in here.",
       oauthFailed: "Couldn't sign in with {{provider}}. Try again.",
       oauthEmailUnverified: "Verify your email with your provider, then try again.",
+      oauthAccountConflict:
+        "An unverified Wharf account already uses this email. Verify it at {{host}}, then try again.",
+      oauthAccountUnverified:
+        "This account isn't verified yet. Confirm your email at {{host}}, then try again.",
     },
   },
   pair: {
@@ -45,6 +51,8 @@ const enCommon = {
     back: "Back",
     errors: {
       invalidCode: "That code is invalid or expired.",
+      emailNotVerified:
+        "This account isn't verified yet. Confirm your email at {{host}}, then enter the same code again — it hasn't been used up.",
       rateLimited: "Too many attempts. Try again in a moment.",
       generic: "Pairing failed. Check your connection and try again.",
     },
@@ -369,8 +377,14 @@ const deCommon: CommonSchema = {
       invalidCredentials: "E-Mail oder Passwort ist falsch.",
       rateLimited: "Zu viele Versuche. Warte einen Moment.",
       generic: "Anmeldung fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.",
+      emailNotVerified:
+        "Dieses Konto ist noch nicht bestätigt. Sieh in dein Postfach und bestätige deine E-Mail unter {{host}}, dann melde dich hier an.",
       oauthFailed: "Anmeldung mit {{provider}} fehlgeschlagen. Versuche es erneut.",
       oauthEmailUnverified: "Bestätige deine E-Mail bei deinem Anbieter und versuche es erneut.",
+      oauthAccountConflict:
+        "Ein noch nicht bestätigtes Wharf-Konto nutzt diese E-Mail bereits. Bestätige sie unter {{host}} und versuche es erneut.",
+      oauthAccountUnverified:
+        "Dieses Konto ist noch nicht bestätigt. Bestätige deine E-Mail unter {{host}} und versuche es erneut.",
     },
   },
   pair: {
@@ -382,6 +396,8 @@ const deCommon: CommonSchema = {
     back: "Zurück",
     errors: {
       invalidCode: "Dieser Code ist ungültig oder abgelaufen.",
+      emailNotVerified:
+        "Dieses Konto ist noch nicht bestätigt. Bestätige deine E-Mail unter {{host}} und gib denselben Code erneut ein — er wurde nicht verbraucht.",
       rateLimited: "Zu viele Versuche. Warte einen Moment.",
       generic: "Kopplung fehlgeschlagen. Prüfe deine Verbindung und versuche es erneut.",
     },

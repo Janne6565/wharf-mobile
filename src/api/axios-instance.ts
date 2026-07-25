@@ -20,6 +20,11 @@ import { clearAccessToken, getAccessToken, setAccessToken } from "@/auth/tokenSt
 // /api/v1 prefix, so this is the bare origin.
 export const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? "https://wharf.jannekeipert.de";
 
+// The same deployment as a bare hostname, for prose that points the user at the
+// web app ("pair at …", "verify your email at …"). Derived rather than hardcoded
+// so a custom EXPO_PUBLIC_API_BASE build names its own host.
+export const WEB_HOST = API_BASE.replace(/^https?:\/\//, "");
+
 const REFRESH_PATH = "/api/v1/auth/refresh";
 // Auth endpoints must never trigger the refresh-and-retry loop: a 401 from them
 // is a genuine credential failure, not an expired access token.

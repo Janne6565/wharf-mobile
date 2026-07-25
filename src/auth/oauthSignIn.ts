@@ -20,9 +20,17 @@ export const OAUTH_REDIRECT_URL = "wharf://oauth";
 // Failure codes the backend can hand back on the redirect (`?error=<code>`). An
 // `invalid_state` failure lands on the website instead, so the browser session is
 // simply dismissed by the user — treated as a cancel, not an error, here.
+// `email_not_verified` is the *provider's* address being unconfirmed;
+// `unverified_account_conflict` means a local Wharf account already holds that
+// address without ever verifying it, so the backend deliberately refused to link
+// the provider identity into it; `account_not_verified` means the resolved local
+// account is itself unverified. All three end the same way for mobile: verify on
+// the web app first, since this app has no verification flow.
 export const OAUTH_ERROR_CODES = [
   "provider_disabled",
   "email_not_verified",
+  "unverified_account_conflict",
+  "account_not_verified",
   "provider_error",
   "server_error",
 ] as const;
@@ -40,7 +48,8 @@ export type OAuthOutcome =
   | { readonly status: "cancelled" };
 
 // Thrown when the browser redirect carried an error code, so the logic hook can
-// map it to a user-facing message (email_not_verified gets its own copy).
+// map it to a user-facing message (each verification-related code gets its own
+// copy; everything else falls back to the generic provider failure).
 export class OAuthSignInError extends Error {
   readonly code: OAuthErrorCode;
   constructor(code: OAuthErrorCode) {

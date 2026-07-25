@@ -2,12 +2,9 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_BASE } from "@/api/axios-instance";
+import { WEB_HOST } from "@/api/axios-instance";
 import { Button, FormField } from "@/components";
 import { usePairLogic } from "@/features/pair/usePairLogic";
-
-// Host shown in the instruction copy — the web origin without the scheme.
-const WEB_HOST = API_BASE.replace(/^https?:\/\//, "");
 
 export default function PairScreen() {
   const { t } = useTranslation();

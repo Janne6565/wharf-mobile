@@ -50,6 +50,8 @@ describe("parseOAuthRedirect", () => {
     for (const code of [
       "provider_disabled",
       "email_not_verified",
+      "unverified_account_conflict",
+      "account_not_verified",
       "provider_error",
       "server_error",
     ]) {
@@ -58,6 +60,20 @@ describe("parseOAuthRedirect", () => {
         error: code,
       });
     }
+  });
+
+  // The two verification-related codes the backend gained: an unverified local
+  // account holding the address (no auto-link), and the resolved account itself
+  // being unverified. Both must survive parsing so the hook can name the cause.
+  it("recognises the account-verification error codes", () => {
+    expect(parseOAuthRedirect("wharf://oauth?error=unverified_account_conflict")).toEqual({
+      status: "error",
+      error: "unverified_account_conflict",
+    });
+    expect(parseOAuthRedirect("wharf://oauth?error=account_not_verified")).toEqual({
+      status: "error",
+      error: "account_not_verified",
+    });
   });
 
   it("collapses an unrecognised error code to 'unknown'", () => {

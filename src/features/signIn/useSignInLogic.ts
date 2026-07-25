@@ -16,10 +16,11 @@ import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { getHttpStatus } from "@/api/httpError";
+import { WEB_HOST } from "@/api/axios-instance";
+import { EMAIL_NOT_VERIFIED_CODE, getHttpStatus, getProblemCode } from "@/api/httpError";
 import { listOAuthProviders } from "@/api/wharf";
 import { emailLogin } from "@/auth/emailLogin";
-import { OAuthSignInError, oauthSignIn } from "@/auth/oauthSignIn";
+import { type OAuthErrorCode, OAuthSignInError, oauthSignIn } from "@/auth/oauthSignIn";
 import { establishSession } from "@/auth/session";
 import { offerBiometricEnrollment } from "@/features/unlock/enrollmentOffer";
 import { EMAIL_PATTERN } from "@/lib/validators";
@@ -36,6 +37,21 @@ const PROVIDER_LABELS: Record<string, string> = { google: "Google", github: "Git
 function providerLabel(provider: string): string {
   return PROVIDER_LABELS[provider] ?? provider;
 }
+
+// Redirect error codes that deserve their own copy — all three are about an
+// unverified address, which the user can only resolve on the web app. Anything
+// else (provider_disabled, provider_error, server_error, unknown) stays on the
+// generic "couldn't sign in with X" message, so raw codes never reach the UI.
+type OAuthErrorMessageKey =
+  | "signIn.errors.oauthEmailUnverified"
+  | "signIn.errors.oauthAccountConflict"
+  | "signIn.errors.oauthAccountUnverified";
+
+const OAUTH_ERROR_MESSAGE_KEYS: Partial<Record<OAuthErrorCode, OAuthErrorMessageKey>> = {
+  email_not_verified: "signIn.errors.oauthEmailUnverified",
+  unverified_account_conflict: "signIn.errors.oauthAccountConflict",
+  account_not_verified: "signIn.errors.oauthAccountUnverified",
+};
 
 export function useSignInLogic() {
   const { t } = useTranslation();
@@ -81,8 +97,15 @@ export function useSignInLogic() {
       return outcome;
     },
     onError: (error: unknown, provider) => {
-      if (error instanceof OAuthSignInError && error.code === "email_not_verified") {
-        setProviderError(t("signIn.errors.oauthEmailUnverified"));
+      const redirectKey =
+        error instanceof OAuthSignInError ? OAUTH_ERROR_MESSAGE_KEYS[error.code] : undefined;
+      if (redirectKey) {
+        setProviderError(t(redirectKey, { host: WEB_HOST }));
+      } else if (getProblemCode(error) === EMAIL_NOT_VERIFIED_CODE) {
+        // The redirect carried a code, but exchanging it was refused: the account
+        // behind the provider identity is unverified. The backend rolls that
+        // exchange back, so the same code still works once the email is verified.
+        setProviderError(t("signIn.errors.emailNotVerified", { host: WEB_HOST }));
       } else {
         setProviderError(t("signIn.errors.oauthFailed", { provider: providerLabel(provider) }));
       }
@@ -133,7 +156,11 @@ export function useSignInLogic() {
     },
     onError: (error: unknown) => {
       const status = getHttpStatus(error);
-      if (status === 401) {
+      if (status === 403 && getProblemCode(error) === EMAIL_NOT_VERIFIED_CODE) {
+        // Credentials were fine — the address just hasn't been confirmed yet.
+        // Verification is web-only, so all we can do is point the user there.
+        setSubmitError(t("signIn.errors.emailNotVerified", { host: WEB_HOST }));
+      } else if (status === 401) {
         setSubmitError(t("signIn.errors.invalidCredentials"));
       } else if (status === 429) {
         setSubmitError(t("signIn.errors.rateLimited"));
