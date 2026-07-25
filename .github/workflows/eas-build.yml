@@ -4,7 +4,7 @@ name: EAS Build
 #   • workflow_dispatch — pick a platform + profile from the Actions "Run workflow"
 #     button (ad-hoc dev/preview/production builds).
 #   • push of a v*.*.* tag — the house "cut a tag = ship prod" convention: builds
-#     production for both platforms (see docs/conventions/CICD.md / KB CICD.md).
+#     production for both platforms (see the agents KB `cicd` skill).
 #
 # Every build runs `--no-wait`: EAS queues the build on its own servers and the
 # Actions job returns immediately, so we don't burn CI minutes waiting. Track

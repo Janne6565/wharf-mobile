@@ -4,18 +4,6 @@ React Native + Expo companion app for Wharf. A direct-token client (like the TUI
 that reuses the wharf-web TS crypto layer with native primitives. See `docs/PLAN.md`
 for the full milestone plan; M0 (this scaffold) delivers the tab shell only.
 
-## Conventions (auto-synced from the agents KB — do not edit the copies)
-
-@docs/conventions/AGENT.md
-@docs/conventions/REACT.md
-@docs/conventions/AUTH.md
-@docs/conventions/TOOLS.md
-@docs/conventions/CICD.md
-@docs/conventions/wharf.md
-
-To change a convention, edit the source in `~/projects/agents` and re-run
-`scripts/sync-conventions.sh` — never edit files under `docs/conventions/`.
-
 ## Commands
 
 - `bun install` — install dependencies (Bun is the package manager; `bun.lock` is committed).
