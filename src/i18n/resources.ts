@@ -171,6 +171,20 @@ const enCommon = {
     needsSyncTitle: "Sync this device first",
     needsSyncBody:
       "Your project keys live on another device. Sync your vault on this device to unlock projects.",
+    keyMismatch: {
+      title: "Public key mismatch",
+      body: "The public key the server publishes for this account does not match the one in this vault. Project keys shared with this account may be going to someone else. Do not accept invites until this is resolved.",
+      localLabel: "Fingerprint in this vault",
+      serverLabel: "Fingerprint published by the server",
+      compareHint:
+        "Compare both fingerprints with another Wharf client (web or terminal) before you act.",
+      republish: "Republish my key",
+      confirmTitle: "Republish this vault's key?",
+      confirmBody:
+        "This replaces the server's copy with the key in this vault and marks it rotated. Every project key wrapped for this account is discarded server-side, so all projects re-enter awaiting access until an admin grants them again.",
+      confirmAction: "Republish",
+      cancel: "Cancel",
+    },
     createTitle: "New project",
     createName: "Name",
     createDescription: "Description (optional)",
@@ -272,6 +286,7 @@ const enCommon = {
     projectCreated: "Project created",
     projectCreateFailed: "Couldn't create the project. Try again.",
     projectCreateNeedsSync: "Sync this device first to create projects.",
+    projectCreateKeyMismatch: "Resolve the public key mismatch before creating projects.",
     projectUpdated: "Project updated",
     projectUpdateFailed: "Couldn't update the project. Try again.",
     projectDeleted: "Project deleted",
@@ -283,6 +298,8 @@ const enCommon = {
     hostMoveDuplicate: "That project already has a host with this name.",
     hostMoveNeedsSync: "Sync this device first to move hosts.",
     keyCopied: "Public key copied",
+    keyRepublished: "Public key republished",
+    keyRepublishFailed: "Couldn't republish the public key. Try again.",
     biometricsEnabled: "Biometric unlock enabled",
     biometricsDisabled: "Biometric unlock disabled",
     biometricsFailed: "Couldn't update biometric unlock.",
@@ -518,6 +535,20 @@ const deCommon: CommonSchema = {
     needsSyncTitle: "Zuerst dieses Gerät synchronisieren",
     needsSyncBody:
       "Deine Projektschlüssel liegen auf einem anderen Gerät. Synchronisiere deinen Tresor auf diesem Gerät, um Projekte freizuschalten.",
+    keyMismatch: {
+      title: "Öffentlicher Schlüssel stimmt nicht überein",
+      body: "Der öffentliche Schlüssel, den der Server für dieses Konto veröffentlicht, stimmt nicht mit dem in diesem Tresor überein. Projektschlüssel, die für dieses Konto freigegeben werden, gehen möglicherweise an jemand anderen. Nimm keine Einladungen an, bis das geklärt ist.",
+      localLabel: "Fingerabdruck in diesem Tresor",
+      serverLabel: "Vom Server veröffentlichter Fingerabdruck",
+      compareHint:
+        "Vergleiche beide Fingerabdrücke mit einem anderen Wharf-Client (Web oder Terminal), bevor du handelst.",
+      republish: "Meinen Schlüssel neu veröffentlichen",
+      confirmTitle: "Schlüssel dieses Tresors neu veröffentlichen?",
+      confirmBody:
+        "Damit wird die Kopie des Servers durch den Schlüssel aus diesem Tresor ersetzt und als rotiert markiert. Jeder für dieses Konto verpackte Projektschlüssel wird serverseitig verworfen, sodass alle Projekte wieder auf Zugriff warten, bis ein Admin sie erneut freigibt.",
+      confirmAction: "Neu veröffentlichen",
+      cancel: "Abbrechen",
+    },
     createTitle: "Neues Projekt",
     createName: "Name",
     createDescription: "Beschreibung (optional)",
@@ -617,6 +648,8 @@ const deCommon: CommonSchema = {
     projectCreated: "Projekt erstellt",
     projectCreateFailed: "Projekt konnte nicht erstellt werden. Versuche es erneut.",
     projectCreateNeedsSync: "Synchronisiere zuerst dieses Gerät, um Projekte zu erstellen.",
+    projectCreateKeyMismatch:
+      "Kläre die Abweichung des öffentlichen Schlüssels, bevor du Projekte erstellst.",
     projectUpdated: "Projekt aktualisiert",
     projectUpdateFailed: "Projekt konnte nicht aktualisiert werden. Versuche es erneut.",
     projectDeleted: "Projekt gelöscht",
@@ -628,6 +661,9 @@ const deCommon: CommonSchema = {
     hostMoveDuplicate: "Dieses Projekt hat bereits einen Host mit diesem Namen.",
     hostMoveNeedsSync: "Synchronisiere zuerst dieses Gerät, um Hosts zu verschieben.",
     keyCopied: "Öffentlicher Schlüssel kopiert",
+    keyRepublished: "Öffentlicher Schlüssel neu veröffentlicht",
+    keyRepublishFailed:
+      "Der öffentliche Schlüssel konnte nicht neu veröffentlicht werden. Versuche es erneut.",
     biometricsEnabled: "Biometrisches Entsperren aktiviert",
     biometricsDisabled: "Biometrisches Entsperren deaktiviert",
     biometricsFailed: "Biometrisches Entsperren konnte nicht geändert werden.",

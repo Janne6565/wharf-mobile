@@ -8,7 +8,9 @@
 // published (PUT /users/me/public-key) so others can seal project DEKs to it.
 //
 // Three cases, mirroring the TUI + web:
-//   * vault has an identity  → idempotently publish it if the server lacks one.
+//   * vault has an identity  → idempotently publish it if the server lacks one,
+//     and — since the server is the one distributing the key others seal project
+//     DEKs to — verify that the key it publishes for THIS account is ours.
 //   * no identity, server HAS a key → this vault is behind the device that created
 //     the identity; minting a second keypair would strand every DEK wrapped to the
 //     real key. On mobile we first run a personal sync pass (the identity may be
@@ -27,6 +29,7 @@ import {
   fromBase64,
   generateKeypair,
   openWithDek,
+  publicKeyFingerprint,
   sealPayload,
   toBase64,
   unlockWithPassword,
@@ -36,6 +39,7 @@ import { vaultDocumentUpdated } from "@/store/vaultSlice";
 import { runSync } from "@/sync/engine";
 import { fingerprint } from "@/sync/fingerprint";
 import { parseVaultDocument, type VaultIdentity } from "./document";
+import { type IdentityMismatch, setIdentityMismatch } from "./identityMismatch";
 import { updateVaultMeta, writeVaultBlob } from "./storage";
 import { getVaultSession, updateVaultSessionPayload } from "./vaultSession";
 
@@ -52,7 +56,18 @@ export type IdentityStatus =
   | { readonly kind: "ready"; readonly keys: IdentityKeys }
   // The vault carries no identity but the server holds a key: this device must
   // sync the personal vault from the device that created the identity first.
-  | { readonly kind: "needs-sync" };
+  | { readonly kind: "needs-sync" }
+  // The server publishes a public key for this account that is NOT the one in
+  // this vault. Either another device rotated the identity and this vault is
+  // stale, or the server (or someone who controls it) substituted a key — in
+  // which case every project DEK sealed "to this account" is readable by whoever
+  // holds the private half. Indistinguishable from the outside, so we stop and
+  // let the user compare the two fingerprints against another client.
+  | {
+      readonly kind: "key-mismatch";
+      readonly localFingerprint: string;
+      readonly serverFingerprint: string;
+    };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -73,6 +88,28 @@ function keysFromIdentity(identity: VaultIdentity): IdentityKeys {
   return {
     publicKey: fromBase64(identity.x25519Pub),
     privateKey: fromBase64(identity.x25519Priv),
+  };
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((byte, i) => byte === b[i]);
+}
+
+// compareServerKey checks the key the server publishes for this account against
+// the one in this vault, returning null when they are the same key and the
+// fingerprint pair when they are not. The comparison is over the raw bytes (not
+// the base64 text) so a re-encoding by the server is not read as a substitution.
+// An undecodable published key throws out of `fromBase64` — the pass then fails
+// closed, which is the right outcome for a server we cannot make sense of.
+function compareServerKey(localBase64: string, serverBase64: string): IdentityMismatch | null {
+  const local = fromBase64(localBase64);
+  const server = fromBase64(serverBase64);
+  if (sameBytes(local, server)) {
+    return null;
+  }
+  return {
+    localFingerprint: publicKeyFingerprint(local),
+    serverFingerprint: publicKeyFingerprint(server),
   };
 }
 
@@ -197,6 +234,18 @@ export async function ensureIdentity(expectedVersion: number): Promise<IdentityS
   if (doc.identity) {
     if (!serverKey) {
       await publishKey(doc.identity.x25519Pub);
+      setIdentityMismatch(null);
+      return { kind: "ready", keys: keysFromIdentity(doc.identity) };
+    }
+    // The server both stores and hands out this account's public key, and no
+    // client used to check that what it hands out is what the account actually
+    // holds. Compare them: if they differ, every DEK sealed "to us" is being
+    // sealed to a key we cannot open — a substituted key is silent otherwise,
+    // showing up only as projects stuck in awaiting-access.
+    const mismatch = compareServerKey(doc.identity.x25519Pub, serverKey);
+    setIdentityMismatch(mismatch);
+    if (mismatch) {
+      return { kind: "key-mismatch", ...mismatch };
     }
     return { kind: "ready", keys: keysFromIdentity(doc.identity) };
   }
@@ -209,11 +258,40 @@ export async function ensureIdentity(expectedVersion: number): Promise<IdentityS
     const synced = getVaultSession();
     const syncedDoc = synced ? parseVaultDocument(synced.payload) : undefined;
     if (syncedDoc?.identity) {
+      // Same check as above: the identity that just arrived must also match what
+      // the server publishes for us.
+      const mismatch = compareServerKey(syncedDoc.identity.x25519Pub, serverKey);
+      setIdentityMismatch(mismatch);
+      if (mismatch) {
+        return { kind: "key-mismatch", ...mismatch };
+      }
       return { kind: "ready", keys: keysFromIdentity(syncedDoc.identity) };
     }
     return { kind: "needs-sync" };
   }
 
   const keys = await generateAndStore(session, expectedVersion);
+  setIdentityMismatch(null);
   return { kind: "ready", keys };
+}
+
+// republishLocalPublicKey re-publishes the public key held in THIS vault as the
+// account's key, with `rotate: true` so the server accepts it over the key it
+// currently holds. The remediation for a mismatch: the local key is the correct
+// one (its private half is in the vault), so we never mint a new keypair — we
+// only overwrite the server's copy.
+//
+// `rotate: true` nulls every wrapped project DEK server-side: each project
+// re-enters awaiting-access until an admin re-seals the DEK to this key. The
+// caller MUST confirm that with the user first.
+export async function republishLocalPublicKey(): Promise<void> {
+  const session = getVaultSession();
+  const doc = session ? parseVaultDocument(session.payload) : undefined;
+  if (!doc?.identity) {
+    throw new CryptoError("corrupt", "no local identity to republish");
+  }
+  await updatePublicKey({ publicKey: doc.identity.x25519Pub, rotate: true });
+  // The server now holds our key; clear the interlock so the next pass can seal
+  // again without waiting for a full identity re-check.
+  setIdentityMismatch(null);
 }

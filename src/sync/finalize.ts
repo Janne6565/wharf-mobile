@@ -10,12 +10,15 @@
 // rest, and a 409 (the vault rotated since we read it, so a stale DEK is refused)
 // is skipped silently — a later pass re-wraps against the current version.
 //
-// The engine is pure: it holds no secrets and touches no globals. All crypto and
+// The engine is pure apart from one deliberate exception — the identity-mismatch
+// interlock at the top of runFinalizePass, which reads module state so it cannot
+// be bypassed by how a caller builds the deps. It holds no secrets. All crypto and
 // I/O go through the injected FinalizeDeps (finalizeDeps.ts wires the real ones),
 // so tests exercise the seal→submit path, the stale-409 skip, per-member error
 // isolation and the non-admin / not-keyed skips against fakes.
 
 import { getHttpStatus } from "@/api/httpError";
+import { isIdentityMismatched } from "@/vault/identityMismatch";
 import type { FinalizeDeps, FinalizeTarget, ProjectRoleName } from "./projectTypes";
 
 const CONFLICT = 409;
@@ -61,6 +64,18 @@ export async function runFinalizePass(
   deps: FinalizeDeps,
   targets: readonly FinalizeTarget[],
 ): Promise<void> {
+  // Hard interlock. Every member key this pass seals to comes from the server
+  // (getPendingKeys), so the pass is only as trustworthy as the server's key
+  // directory. A detected mismatch is proof that the directory is wrong about at
+  // least one account — our own, the one entry we can independently verify — and
+  // a server that substitutes our key can substitute anyone's. Sealing on would
+  // hand the project DEK to whoever supplied those keys, so we refuse the whole
+  // pass rather than skipping suspicious members: there is no way to tell a good
+  // entry from a bad one. Read from module state, not from `deps`, so no caller
+  // can wire around it.
+  if (isIdentityMismatched()) {
+    return;
+  }
   for (const target of targets) {
     if (!target.id || !canFinalize(target.role)) {
       continue;

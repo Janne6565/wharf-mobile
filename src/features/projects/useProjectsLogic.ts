@@ -6,6 +6,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
+import { Alert } from "react-native";
 import {
   acceptInvite as apiAccept,
   createProject as apiCreate,
@@ -13,10 +14,12 @@ import {
 } from "@/api/wharf";
 import { store } from "@/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { identityKeyMismatchCleared } from "@/store/projectsSlice";
 import { showToast } from "@/store/toastSlice";
 import { runProjectsSync } from "@/sync/projectsEngine";
-import { ensureIdentity } from "@/vault/identity";
+import { ensureIdentity, republishLocalPublicKey } from "@/vault/identity";
 import { buildCreateProject } from "@/vault/projectCreate";
+import type { ConfirmCopy } from "./useProjectDetailLogic";
 
 interface RespondVars {
   readonly inviteId: string;
@@ -33,6 +36,11 @@ interface CreateVars {
 // create mutation can surface a distinct, actionable toast.
 class ProjectNeedsSyncError extends Error {}
 
+// The account's published key is not the one in this vault: creating a project
+// would publish membership against a key directory we know to be wrong, so the
+// create is refused with its own toast rather than the needs-sync one.
+class ProjectKeyMismatchError extends Error {}
+
 export function useProjectsLogic() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -42,6 +50,7 @@ export function useProjectsLogic() {
   const loaded = useAppSelector((state) => state.projects.loaded);
   const offline = useAppSelector((state) => state.projects.offline);
   const identityNeedsSync = useAppSelector((state) => state.projects.identityNeedsSync);
+  const keyMismatch = useAppSelector((state) => state.projects.identityKeyMismatch);
 
   // Lazy: the first Projects focus triggers identity bootstrap + the projects
   // pass. Single-flight in the orchestrator, so re-firing on every focus is safe.
@@ -107,6 +116,9 @@ export function useProjectsLogic() {
       if (identity.kind === "needs-sync") {
         throw new ProjectNeedsSyncError();
       }
+      if (identity.kind === "key-mismatch") {
+        throw new ProjectKeyMismatchError();
+      }
       const { vault, wrappedDek } = await buildCreateProject(identity.keys.publicKey);
       await apiCreate({
         name: name.trim(),
@@ -126,7 +138,9 @@ export function useProjectsLogic() {
           messageKey:
             error instanceof ProjectNeedsSyncError
               ? "toast.projectCreateNeedsSync"
-              : "toast.projectCreateFailed",
+              : error instanceof ProjectKeyMismatchError
+                ? "toast.projectCreateKeyMismatch"
+                : "toast.projectCreateFailed",
           kind: "error",
         }),
       ),
@@ -137,14 +151,42 @@ export function useProjectsLogic() {
     [createMutation],
   );
 
+  // Mismatch remediation: re-publish the public key THIS vault holds, with
+  // rotate:true so the server takes it over its own copy. No new keypair is minted
+  // — the local key is the correct one. rotate:true discards every wrapped project
+  // DEK server-side, so the action is only fired from an explicit confirmation.
+  const republishMutation = useMutation({
+    mutationFn: () => republishLocalPublicKey(),
+    onSuccess: () => {
+      dispatch(showToast({ messageKey: "toast.keyRepublished", kind: "success" }));
+      dispatch(identityKeyMismatchCleared());
+      void runProjectsSync();
+    },
+    onError: () => dispatch(showToast({ messageKey: "toast.keyRepublishFailed", kind: "error" })),
+  });
+
+  const confirmRepublish = useCallback(
+    (copy: ConfirmCopy) => {
+      Alert.alert(copy.title, copy.body, [
+        { text: copy.cancel, style: "cancel" },
+        { text: copy.confirm, style: "destructive", onPress: () => republishMutation.mutate() },
+      ]);
+    },
+    [republishMutation],
+  );
+
   const showLoading = !loaded && phase === "syncing";
-  const showEmpty = loaded && !identityNeedsSync && projects.length === 0 && invites.length === 0;
+  const showEmpty =
+    loaded && !identityNeedsSync && !keyMismatch && projects.length === 0 && invites.length === 0;
 
   return {
     projects,
     invites,
     offline,
     identityNeedsSync,
+    keyMismatch,
+    confirmRepublish,
+    republishing: republishMutation.isPending,
     openProject,
     acceptInvite,
     declineInvite,

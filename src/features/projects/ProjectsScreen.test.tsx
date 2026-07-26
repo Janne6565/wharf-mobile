@@ -1,7 +1,13 @@
 import "@/i18n/config";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import { store } from "@/store";
-import { projectsLoaded, projectsReset, projectsSyncStarted } from "@/store/projectsSlice";
+import {
+  identityKeyMismatchSet,
+  projectsLoaded,
+  projectsReset,
+  projectsSyncStarted,
+} from "@/store/projectsSlice";
 import type { InviteView, ProjectView } from "@/sync/projectTypes";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import ProjectsScreen from "../../../app/(tabs)/projects/index";
@@ -31,8 +37,10 @@ jest.mock("@/sync/projectsEngine", () => ({
 // are covered in isolation (identity.test / projectCreate.test), so mock them here
 // and assert the screen wires them into the create API call.
 const mockEnsureIdentity = jest.fn();
+const mockRepublish = jest.fn();
 jest.mock("@/vault/identity", () => ({
   ensureIdentity: () => mockEnsureIdentity(),
+  republishLocalPublicKey: () => mockRepublish(),
 }));
 const mockBuildCreateProject = jest.fn();
 jest.mock("@/vault/projectCreate", () => ({
@@ -71,6 +79,7 @@ describe("ProjectsScreen", () => {
       keys: { publicKey: new Uint8Array(32), privateKey: new Uint8Array(32) },
     });
     mockBuildCreateProject.mockResolvedValue({ vault: "vault-b64", wrappedDek: "dek-b64" });
+    mockRepublish.mockResolvedValue(undefined);
   });
 
   it("renders a project row with role and host/member counts", async () => {
@@ -155,6 +164,51 @@ describe("ProjectsScreen", () => {
     );
     // Success closes the sheet, so its fields unmount.
     await waitFor(() => expect(utils.queryByTestId("project-name")).toBeNull());
+  });
+
+  it("warns about a public-key mismatch, showing both labelled fingerprints", async () => {
+    store.dispatch(
+      identityKeyMismatchSet({
+        localFingerprint: "Zmh6 rfhi vXds j8GL",
+        serverFingerprint: "cs1u hCLE B/tt CYaQ",
+      }),
+    );
+    const { getByText, getByTestId } = await renderWithProviders(<ProjectsScreen />);
+
+    expect(getByTestId("key-mismatch-warning")).toBeOnTheScreen();
+    expect(getByText("Public key mismatch")).toBeOnTheScreen();
+    expect(getByText("Fingerprint in this vault")).toBeOnTheScreen();
+    expect(getByText("Zmh6 rfhi vXds j8GL")).toBeOnTheScreen();
+    expect(getByText("Fingerprint published by the server")).toBeOnTheScreen();
+    expect(getByText("cs1u hCLE B/tt CYaQ")).toBeOnTheScreen();
+  });
+
+  it("does not republish when the confirmation is dismissed", async () => {
+    store.dispatch(identityKeyMismatchSet({ localFingerprint: "aaaa", serverFingerprint: "bbbb" }));
+    // An Alert the user walks away from: no button is pressed.
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const { getByTestId } = await renderWithProviders(<ProjectsScreen />);
+
+    fireEvent.press(getByTestId("key-mismatch-republish"));
+
+    expect(alertSpy).toHaveBeenCalled();
+    expect(mockRepublish).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it("republishes this vault's key once the destructive confirmation is accepted", async () => {
+    store.dispatch(identityKeyMismatchSet({ localFingerprint: "aaaa", serverFingerprint: "bbbb" }));
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation((_t, _b, buttons) => {
+      buttons?.find((btn) => btn.style === "destructive")?.onPress?.();
+    });
+    const { getByTestId } = await renderWithProviders(<ProjectsScreen />);
+
+    fireEvent.press(getByTestId("key-mismatch-republish"));
+
+    // republishLocalPublicKey is what sends the local key with rotate:true (see
+    // identity.test.ts); the screen's job is to only call it behind the confirm.
+    await waitFor(() => expect(mockRepublish).toHaveBeenCalledTimes(1));
+    alertSpy.mockRestore();
   });
 
   it("keeps the create submit disabled until a name is entered", async () => {

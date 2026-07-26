@@ -11,6 +11,7 @@ import {
   ScreenTitle,
 } from "@/components";
 import { InviteCard } from "@/features/projects/InviteCard";
+import { KeyMismatchWarning } from "@/features/projects/KeyMismatchWarning";
 import { ProjectFormSheet } from "@/features/projects/ProjectFormSheet";
 import { ProjectRow } from "@/features/projects/ProjectRow";
 import { useProjectsLogic } from "@/features/projects/useProjectsLogic";
@@ -53,6 +54,9 @@ export default function ProjectsScreen() {
     invites,
     offline,
     identityNeedsSync,
+    keyMismatch,
+    confirmRepublish,
+    republishing,
     openProject,
     acceptInvite,
     declineInvite,
@@ -72,6 +76,20 @@ export default function ProjectsScreen() {
         title={t("projects.title")}
         action={<AddButton onPress={openCreate} testID="projects-add" />}
       />
+      {keyMismatch ? (
+        <KeyMismatchWarning
+          mismatch={keyMismatch}
+          republishing={republishing}
+          onRepublish={() =>
+            confirmRepublish({
+              title: t("projects.keyMismatch.confirmTitle"),
+              body: t("projects.keyMismatch.confirmBody"),
+              confirm: t("projects.keyMismatch.confirmAction"),
+              cancel: t("projects.keyMismatch.cancel"),
+            })
+          }
+        />
+      ) : null}
       {identityNeedsSync ? (
         <Notice
           icon="info"

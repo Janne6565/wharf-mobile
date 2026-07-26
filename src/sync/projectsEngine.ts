@@ -15,6 +15,7 @@
 
 import { store } from "@/store";
 import {
+  identityKeyMismatchSet,
   identityNeedsSyncSet,
   projectsLoaded,
   projectsSyncSettled,
@@ -60,6 +61,19 @@ async function doPass(): Promise<void> {
   const identity = await ensureIdentity(expectedVersion);
   if (identity.kind === "needs-sync") {
     store.dispatch(identityNeedsSyncSet());
+    return;
+  }
+  if (identity.kind === "key-mismatch") {
+    // The server publishes a key for this account that is not ours. We hold no
+    // trustworthy view of the key directory, so the pass stops here: nothing is
+    // read, nothing is sealed, and the Projects tab shows the warning until the
+    // user resolves it (ensureIdentity has already armed the finalize interlock).
+    store.dispatch(
+      identityKeyMismatchSet({
+        localFingerprint: identity.localFingerprint,
+        serverFingerprint: identity.serverFingerprint,
+      }),
+    );
     return;
   }
 

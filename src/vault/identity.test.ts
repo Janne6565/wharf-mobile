@@ -30,8 +30,10 @@ jest.mock("@/crypto", () => {
 import { getCurrentUser, getVault, updatePublicKey, updateVault } from "@/api/wharf";
 import type { UnlockedVault } from "@/crypto";
 import { fromBase64, generateKeypair, openWithDek, sealPayload, toBase64 } from "@/crypto";
+import { publicKeyFingerprint } from "@/crypto/keyFingerprint";
 import { getVaultSession } from "@/vault/vaultSession";
-import { ensureIdentity, withIdentity } from "./identity";
+import { ensureIdentity, republishLocalPublicKey, withIdentity } from "./identity";
+import { getIdentityMismatch, setIdentityMismatch } from "./identityMismatch";
 
 const enc = (s: string) => new TextEncoder().encode(s);
 const PUB = projectFixture.publicKeyBase64;
@@ -68,8 +70,13 @@ function axios409(): Error {
   return Object.assign(new Error("conflict"), { isAxiosError: true, response: { status: 409 } });
 }
 
+// A valid, decodable 32-byte key that is NOT the vault's identity — what a server
+// substituting its own key for this account would publish.
+const FOREIGN_PUB = toBase64(new Uint8Array(32).fill(9));
+
 beforeEach(() => {
   jest.clearAllMocks();
+  setIdentityMismatch(null);
   mocked.sealPayload.mockResolvedValue(enc("sealed-blob"));
   mocked.generateKeypair.mockResolvedValue({
     publicKey: fromBase64(PUB),
@@ -116,6 +123,35 @@ describe("ensureIdentity", () => {
     expect(mocked.updatePublicKey).not.toHaveBeenCalled();
   });
 
+  it("reports key-mismatch when the server publishes a key that is not this vault's", async () => {
+    mocked.getVaultSession.mockReturnValue(session(DOC_WITH_IDENTITY));
+    mocked.getCurrentUser.mockResolvedValue({ publicKey: FOREIGN_PUB });
+
+    const status = await ensureIdentity(0);
+
+    expect(status.kind).toBe("key-mismatch");
+    if (status.kind !== "key-mismatch") return;
+    expect(status.localFingerprint).toBe(publicKeyFingerprint(fromBase64(PUB)));
+    expect(status.serverFingerprint).toBe(publicKeyFingerprint(fromBase64(FOREIGN_PUB)));
+    expect(status.localFingerprint).not.toBe(status.serverFingerprint);
+    // Nothing is published or written on the mismatch path.
+    expect(mocked.updatePublicKey).not.toHaveBeenCalled();
+    expect(mocked.updateVault).not.toHaveBeenCalled();
+  });
+
+  it("arms the finalize interlock on a mismatch and disarms it on a match", async () => {
+    mocked.getVaultSession.mockReturnValue(session(DOC_WITH_IDENTITY));
+    mocked.getCurrentUser.mockResolvedValue({ publicKey: FOREIGN_PUB });
+    await ensureIdentity(0);
+    expect(getIdentityMismatch()).not.toBeNull();
+
+    mocked.getCurrentUser.mockResolvedValue({ publicKey: PUB });
+    const status = await ensureIdentity(0);
+
+    expect(status.kind).toBe("ready");
+    expect(getIdentityMismatch()).toBeNull();
+  });
+
   it("case 2: no identity but server has a key → needs-sync after a sync pass", async () => {
     mocked.getVaultSession.mockReturnValue(session(DOC_NO_IDENTITY));
     mocked.getCurrentUser.mockResolvedValue({ publicKey: "otherkey" });
@@ -131,7 +167,8 @@ describe("ensureIdentity", () => {
     mocked.getVaultSession
       .mockReturnValueOnce(session(DOC_NO_IDENTITY))
       .mockReturnValue(session(DOC_WITH_IDENTITY));
-    mocked.getCurrentUser.mockResolvedValue({ publicKey: "otherkey" });
+    // The published key is the identity the sync is about to deliver.
+    mocked.getCurrentUser.mockResolvedValue({ publicKey: PUB });
 
     const status = await ensureIdentity(0);
 
@@ -172,5 +209,26 @@ describe("ensureIdentity", () => {
       expectedVersion: 9,
     });
     expect(mocked.openWithDek).toHaveBeenCalled();
+  });
+});
+
+describe("republishLocalPublicKey", () => {
+  it("publishes THIS vault's key with rotate:true and clears the interlock", async () => {
+    mocked.getVaultSession.mockReturnValue(session(DOC_WITH_IDENTITY));
+    setIdentityMismatch({ localFingerprint: "a", serverFingerprint: "b" });
+
+    await republishLocalPublicKey();
+
+    // The local key is the correct one — no new keypair is minted.
+    expect(mocked.updatePublicKey).toHaveBeenCalledWith({ publicKey: PUB, rotate: true });
+    expect(mocked.generateKeypair).not.toHaveBeenCalled();
+    expect(getIdentityMismatch()).toBeNull();
+  });
+
+  it("throws (and publishes nothing) when this vault holds no identity", async () => {
+    mocked.getVaultSession.mockReturnValue(session(DOC_NO_IDENTITY));
+
+    await expect(republishLocalPublicKey()).rejects.toThrow();
+    expect(mocked.updatePublicKey).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { fromBase64, openDek, sealDek, toBase64, WRAPPED_DEK_LEN } from "@/crypto";
 import projectFixture from "@/crypto/__fixtures__/project-fixture.json";
+import { setIdentityMismatch } from "@/vault/identityMismatch";
 import { runFinalizePass } from "./finalize";
 import type {
   FinalizeDeps,
@@ -82,6 +83,22 @@ function admin(id = "p1"): FinalizeTarget {
 }
 
 describe("runFinalizePass", () => {
+  beforeEach(() => setIdentityMismatch(null));
+  afterEach(() => setIdentityMismatch(null));
+
+  it("does not run at all while the account's published key does not match this vault's", async () => {
+    // The pending members' keys all come from the same server whose key directory
+    // we have just caught being wrong about us, so nothing may be sealed.
+    setIdentityMismatch({ localFingerprint: "aaaa bbbb cccc dddd", serverFingerprint: "eeee" });
+    const fake = makeFake();
+
+    await runFinalizePass(fake.deps, [admin()]);
+
+    expect(fake.fetchVault).not.toHaveBeenCalled();
+    expect(fake.getPendingKeys).not.toHaveBeenCalled();
+    expect(fake.submitCalls).toHaveLength(0);
+  });
+
   it("seals the DEK to a pending member and submits an 80-byte payload at the vault version", async () => {
     const fake = makeFake();
     await runFinalizePass(fake.deps, [admin()]);

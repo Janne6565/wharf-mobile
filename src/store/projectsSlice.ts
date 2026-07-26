@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { InviteView, ProjectView } from "@/sync/projectTypes";
 import type { VaultHost } from "@/vault/document";
+import type { IdentityMismatch } from "@/vault/identityMismatch";
 
 // Derived, non-secret projects state for the UI (M4). Like vaultSlice, the secret
 // material (project DEKs, decrypted payloads, the account identity private key)
@@ -27,6 +28,10 @@ interface ProjectsState {
   // The vault carries no identity but the server holds a key: this device must
   // sync its personal vault from the device that created the identity first.
   identityNeedsSync: boolean;
+  // The public key the server publishes for this account is NOT the one in this
+  // vault (see @/vault/identity). Display copy for the Projects-tab warning; the
+  // interlock the sync passes obey lives in @/vault/identityMismatch.
+  identityKeyMismatch: IdentityMismatch | null;
   projects: StoredProject[];
   invites: InviteView[];
 }
@@ -36,6 +41,7 @@ const initialState: ProjectsState = {
   loaded: false,
   offline: false,
   identityNeedsSync: false,
+  identityKeyMismatch: null,
   projects: [],
   invites: [],
 };
@@ -65,6 +71,7 @@ const projectsSlice = createSlice({
       state.loaded = true;
       state.offline = action.payload.offline;
       state.identityNeedsSync = false;
+      state.identityKeyMismatch = null;
       state.projects = toStoredProjects(action.payload.projects);
       state.invites = [...action.payload.invites];
     },
@@ -80,6 +87,16 @@ const projectsSlice = createSlice({
       state.loaded = true;
       state.identityNeedsSync = true;
     },
+    // The server publishes a foreign key for this account: settle the phase and
+    // hold the fingerprints for the (non-dismissable) warning.
+    identityKeyMismatchSet(state, action: PayloadAction<IdentityMismatch>) {
+      state.phase = "idle";
+      state.loaded = true;
+      state.identityKeyMismatch = action.payload;
+    },
+    identityKeyMismatchCleared(state) {
+      state.identityKeyMismatch = null;
+    },
     projectsReset() {
       return initialState;
     },
@@ -91,6 +108,8 @@ export const {
   projectsLoaded,
   projectsSyncSettled,
   identityNeedsSyncSet,
+  identityKeyMismatchSet,
+  identityKeyMismatchCleared,
   projectsReset,
 } = projectsSlice.actions;
 export default projectsSlice.reducer;

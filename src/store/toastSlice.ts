@@ -17,6 +17,7 @@ export type ToastMessageKey =
   | "toast.projectCreated"
   | "toast.projectCreateFailed"
   | "toast.projectCreateNeedsSync"
+  | "toast.projectCreateKeyMismatch"
   | "toast.projectUpdated"
   | "toast.projectUpdateFailed"
   | "toast.projectDeleted"
@@ -28,6 +29,8 @@ export type ToastMessageKey =
   | "toast.hostMoveDuplicate"
   | "toast.hostMoveNeedsSync"
   | "toast.keyCopied"
+  | "toast.keyRepublished"
+  | "toast.keyRepublishFailed"
   | "toast.biometricsEnabled"
   | "toast.biometricsDisabled"
   | "toast.biometricsFailed";
