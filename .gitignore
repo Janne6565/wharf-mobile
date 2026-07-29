@@ -13,6 +13,8 @@ expo-env.d.ts
 # the source of truth and these regenerate on demand.
 /ios
 /android
+# Gradle output inside the local Expo modules (produced by an Android build).
+modules/*/android/build/
 .kotlin/
 *.orig.*
 *.jks

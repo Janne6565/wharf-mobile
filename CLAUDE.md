@@ -9,6 +9,11 @@ for the full milestone plan; M0 (this scaffold) delivers the tab shell only.
 - `bun install` — install dependencies (Bun is the package manager; `bun.lock` is committed).
 - `bun run dev` — start Metro with the dev-client (`expo start --dev-client`).
 - `bun run ios` / `bun run android` — build + run on a simulator/device (`expo run:*`).
+  Android needs **JDK 21** (`JAVA_HOME=$(/usr/libexec/java_home -v 21)`); a newer JDK
+  fails AGP's CMake configure. It also needs Go + an NDK, because the SSH engine aar is
+  built from source — see `modules/wharf-ssh/README.md`.
+- `bun run gen:engine` — rebuild the gomobile SSH engine bindings (`--android` / `--ios`
+  to pick one; the Android aar is otherwise rebuilt automatically by Gradle).
 - `bun run typecheck` — `tsc --noEmit`.
 - `bun run lint` / `bun run lint:fix` — Biome.
 - `bun run test` — Jest (jest-expo + React Native Testing Library).

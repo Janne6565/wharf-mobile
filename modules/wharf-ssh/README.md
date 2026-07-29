@@ -16,24 +16,39 @@ Both platforms link a prebuilt gomobile binding produced by
 | Android  | `android/libs/sshengine.aar`                      | **No** — only `libs/.gitkeep` is committed. |
 
 The iOS xcframework is committed (33 MB) so an iOS build / CI needs no Go toolchain.
-The Android `.aar` is **not** committed: building it requires an Android NDK, which is
-not always present. `scripts/build-ssh-engine.sh` produces
-`sshengine/dist/sshengine.aar` when an NDK is detected and rsyncs it into
-`android/libs/`.
+The Android `.aar` is **not** committed — gomobile output is not reproducible, so a
+checked-in binding rewrites ~16 MB of unmergeable bytes on every rebuild even when no
+source changed. It is built from `sshengine/*.go` on demand instead.
 
 ### Building the engine
 
+`android/build.gradle` registers a `buildSshEngine` task that `preBuild` depends on, so
+**no manual step is needed** — an Android build regenerates `libs/sshengine.aar`
+whenever it is missing or older than any `sshengine/*.go`, and skips otherwise.
+
+To drive it by hand:
+
 ```sh
-scripts/build-ssh-engine.sh
+scripts/build-ssh-engine.sh --android   # aar only
+scripts/build-ssh-engine.sh --ios       # xcframework only
+scripts/build-ssh-engine.sh             # both, as the toolchains allow
 ```
 
-- iOS bind runs whenever Xcode is available and refreshes
-  `ios/WharfSshEngine.xcframework`.
-- Android bind runs only when an NDK is found (`ANDROID_NDK_HOME` or
-  `~/Library/Android/sdk/ndk/*`) and refreshes `android/libs/sshengine.aar`.
+Always pass a target when you only want one: an unintended iOS rebuild shows up as ~35 MB
+of phantom diff in the committed xcframework.
 
-**An Android build fails until `android/libs/sshengine.aar` exists** — run the build
-script with an NDK installed before `expo run:android` / an Android EAS build.
+### Toolchain requirements (Android)
+
+| Need | Local | EAS Build |
+|------|-------|-----------|
+| Go   | install any recent Go (gomobile is pinned by the script) | installed by the `eas-build-pre-install` hook, `scripts/eas-pre-install.sh` |
+| NDK  | `sdkmanager --sdk_root="$ANDROID_HOME" 'ndk;27.1.12297006'` | preinstalled on the SDK 57 image (same version) |
+| JDK  | **21** — a newer JDK fails AGP's CMake configure with `A restricted method in java.lang.System has been called`. Use `JAVA_HOME=$(/usr/libexec/java_home -v 21)`. | image default |
+
+NDK `27.1.12297006` is not arbitrary: it is what React Native 0.86 pins
+(`react-native/gradle/libs.versions.toml`), so one NDK serves both the gomobile bind and
+the Gradle app build. The script also honours `ANDROID_NDK_HOME` / `ANDROID_NDK_ROOT` and
+the standard SDK layouts on macOS and Linux.
 
 ## Layout
 
