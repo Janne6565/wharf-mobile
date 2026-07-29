@@ -7,6 +7,10 @@ version = '0.1.0'
 android {
   namespace "expo.modules.wharfargon2"
   defaultConfig {
+    // expo-module-gradle-plugin builds a 'release' publishing component and
+    // requires both to be set, even for a local (never-published) module.
+    versionCode 1
+    versionName '0.1.0'
     minSdkVersion 24
   }
 }
