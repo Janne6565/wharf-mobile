@@ -27,23 +27,15 @@
       "autoIncrement": true
     }
   },
+  // Store credentials are deliberately absent from this file. Both the Google
+  // Service Account key and the App Store Connect API key are uploaded to and
+  // held by EAS (`eas credentials`), so no key paths, Apple IDs or team IDs —
+  // all machine- and account-specific — are committed. EAS resolves the target
+  // app from the bundle identifier / package name in app.config.js.
+  // Full setup walkthrough: docs/RELEASING.md.
   "submit": {
     "production": {
-      "ios": {
-        // Apple ID email of an account with access to App Store Connect.
-        "appleId": "APPLE_ID_EMAIL_PLACEHOLDER",
-        // App Store Connect app's numeric Apple ID (App Information → General →
-        // "Apple ID"). Create the app record once at appstoreconnect.apple.com.
-        "ascAppId": "ASC_APP_ID_PLACEHOLDER",
-        // Apple Developer team ID (Membership details, e.g. "AB12CD34EF").
-        "appleTeamId": "APPLE_TEAM_ID_PLACEHOLDER"
-      },
       "android": {
-        // Path to a Google Play service-account JSON key with the "Release
-        // manager" role. Create it in Play Console → Setup → API access → create
-        // a service account in Google Cloud, grant it Play access, download the
-        // JSON, and keep it OUT of git (store it locally or as an EAS secret).
-        "serviceAccountKeyPath": "PATH_TO_PLAY_SERVICE_ACCOUNT_JSON_PLACEHOLDER",
         // First submission must be "internal" (Play internal testing track); the
         // app has to exist in the Play Console before EAS can submit to it.
         "track": "internal"
