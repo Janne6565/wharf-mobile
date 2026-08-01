@@ -61,6 +61,38 @@ submission. Nothing lands in `eas.json`.
 > role **App Manager**), you can, but then `ascApiKeyPath` / `ascApiKeyIssuerId` /
 > `ascApiKeyId` have to be supplied — put them in EAS environment variables, not in git.
 
+**c. Set up iOS *build* credentials.** These are a **separate** set from the API key
+above, and both are required:
+
+| Credential | Used for | Set up by |
+|---|---|---|
+| App Store Connect API Key | *submitting* a finished build | step **b** |
+| Distribution Certificate + Provisioning Profile | *signing the build itself* | this step |
+
+An API key alone gets you a `--non-interactive` build failure that names only the
+certificate:
+
+```
+Distribution Certificate is not validated for non-interactive builds.
+Failed to set up credentials. Credentials are not set up. Run this command again in
+interactive mode.
+```
+
+Generate them once, interactively — EAS logs into Apple and creates both:
+
+```sh
+eas credentials --platform ios
+# → production → Build Credentials → set up a new Distribution Certificate
+#   and Provisioning Profile
+```
+
+Equivalent shortcut: run `eas build --platform ios --profile production` **without**
+`--non-interactive` once and accept the prompts. After that CI works unattended, because
+the credentials live on EAS.
+
+Android has no equivalent step: EAS generated its keystore automatically on the first
+build (visible as *Build Credentials* in `eas credentials --platform android`).
+
 ---
 
 ## Releasing
