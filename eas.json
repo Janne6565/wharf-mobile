@@ -35,6 +35,15 @@
   // Full setup walkthrough: docs/RELEASING.md.
   "submit": {
     "production": {
+      "ios": {
+        // App Store Connect's numeric app ID (App Information → General → "Apple
+        // ID"). The one account-specific value that has to live here: eas-cli has
+        // no environment-variable equivalent (only EXPO_ASC_API_KEY_PATH /
+        // _ISSUER_ID / _KEY_ID exist), and without it a --non-interactive submit
+        // fails with "Set ascAppId in the submit profile". It is not a secret —
+        // the same number appears in every App Store URL (…/app/id6796039514).
+        "ascAppId": "6796039514"
+      },
       "android": {
         // First submission must be "internal" (Play internal testing track); the
         // app has to exist in the Play Console before EAS can submit to it.
