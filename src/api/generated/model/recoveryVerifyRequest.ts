@@ -12,7 +12,11 @@
  * Verify a recovery code and retrieve the vault for re-encryption
  */
 export interface RecoveryVerifyRequest {
+  /** @minLength 1 */
   email: string;
-  /** base64 HKDF-derived recovery authentication key */
+  /**
+     * base64 HKDF-derived recovery authentication key
+     * @minLength 1
+     */
   recoveryAuthKey: string;
 }

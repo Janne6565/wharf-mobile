@@ -14,6 +14,8 @@
 export interface UserProfile {
   id?: string;
   email?: string;
+  /** Whether the email address has been proven with a one-time code */
+  emailVerified?: boolean;
   createdAt?: string;
   /** Whether a master-password auth key is set (false for a fresh OAuth account) */
   hasPassword?: boolean;

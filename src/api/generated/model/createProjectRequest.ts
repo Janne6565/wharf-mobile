@@ -30,6 +30,9 @@ export interface CreateProjectRequest {
      * @maxLength 1400000
      */
   vault: string;
-  /** Base64-encoded project DEK sealed to the owner's public key (exactly 80 bytes) */
+  /**
+     * Base64-encoded project DEK sealed to the owner's public key (exactly 80 bytes)
+     * @minLength 1
+     */
   wrappedDek: string;
 }

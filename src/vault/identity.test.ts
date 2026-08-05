@@ -29,7 +29,14 @@ jest.mock("@/crypto", () => {
 
 import { getCurrentUser, getVault, updatePublicKey, updateVault } from "@/api/wharf";
 import type { UnlockedVault } from "@/crypto";
-import { fromBase64, generateKeypair, openWithDek, sealPayload, toBase64 } from "@/crypto";
+import {
+  fromBase64,
+  generateKeypair,
+  isHybridPub,
+  openWithDek,
+  sealPayload,
+  toBase64,
+} from "@/crypto";
 import { publicKeyFingerprint } from "@/crypto/keyFingerprint";
 import { getVaultSession } from "@/vault/vaultSession";
 import { ensureIdentity, republishLocalPublicKey, withIdentity } from "./identity";
@@ -189,7 +196,36 @@ describe("ensureIdentity", () => {
       vault: toBase64(enc("sealed-blob")),
       expectedVersion: 3,
     });
-    expect(mocked.updatePublicKey).toHaveBeenCalledWith({ publicKey: PUB, rotate: false });
+    // A fresh identity is hybrid: the published key is the v2 encoding wrapping
+    // the very X25519 key generateKeypair returned.
+    const published = fromBase64(mocked.updatePublicKey.mock.calls[0][0].publicKey);
+    expect(isHybridPub(published)).toBe(true);
+    expect(toBase64(published.subarray(1, 33))).toBe(PUB);
+    expect(mocked.updatePublicKey.mock.calls[0][0].rotate).toBe(false);
+  });
+
+  // The v1 -> v2 migration: a classical identity grows its ML-KEM half once the
+  // published key is confirmed to be ours, and the hybrid key replaces it with
+  // upgrade (not rotate), so no wrapped DEK is discarded.
+  it("upgrades a classical identity to hybrid and publishes it with upgrade", async () => {
+    mocked.getVaultSession.mockReturnValue(session(DOC_WITH_IDENTITY));
+    mocked.getCurrentUser.mockResolvedValue({ publicKey: PUB });
+    mocked.updateVault.mockResolvedValue({ version: 5 });
+
+    const status = await ensureIdentity(4);
+
+    expect(status.kind).toBe("ready");
+    expect(mocked.generateKeypair).not.toHaveBeenCalled();
+
+    const call = mocked.updatePublicKey.mock.calls[0][0];
+    expect(call.rotate).toBe(false);
+    expect(call.upgrade).toBe(true);
+    const published = fromBase64(call.publicKey);
+    expect(isHybridPub(published)).toBe(true);
+    // The X25519 half is untouched — that is what keeps existing DEKs openable.
+    expect(toBase64(published.subarray(1, 33))).toBe(PUB);
+    // The seed is persisted into the personal vault so the other clients get it.
+    expect(mocked.updateVault).toHaveBeenCalledTimes(1);
   });
 
   it("case 3: a 409 adopts the remote payload, re-applies the identity and retries once", async () => {

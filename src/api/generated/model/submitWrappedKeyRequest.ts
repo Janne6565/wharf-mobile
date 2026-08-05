@@ -12,7 +12,10 @@
  * Seal the project DEK to a member's public key
  */
 export interface SubmitWrappedKeyRequest {
-  /** Base64-encoded project DEK sealed to the target member's public key (exactly 80 bytes) */
+  /**
+     * Base64-encoded project DEK sealed to the target member's public key (exactly 80 bytes)
+     * @minLength 1
+     */
   wrappedDek: string;
   /** The project vault version the DEK was wrapped against; rejected (409) if the vault has since rotated, so a stale DEK is never accepted */
   vaultVersion?: number;

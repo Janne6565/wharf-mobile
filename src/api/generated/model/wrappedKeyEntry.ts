@@ -14,6 +14,9 @@
 export interface WrappedKeyEntry {
   /** The member the key is wrapped for */
   userId: string;
-  /** Base64-encoded DEK sealed to that member's public key (exactly 80 bytes) */
+  /**
+     * Base64-encoded DEK sealed to that member's public key (exactly 80 bytes)
+     * @minLength 1
+     */
   wrappedDek: string;
 }

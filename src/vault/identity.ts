@@ -1,4 +1,4 @@
-// Lazy X25519 identity bootstrap, run on first Projects use once the vault is
+// Lazy identity bootstrap, run on first Projects use once the vault is
 // unlocked. A TypeScript port of wharf-web's src/vault/identity.ts, adapted to the
 // mobile on-device vault (file blob + meta + in-memory session) instead of the
 // web's server-round-tripped session.
@@ -19,6 +19,13 @@
 //   * neither → generate a keypair, write it into the vault (schema 2, preserving
 //     unknown fields), versioned PUT the personal vault (409 → adopt remote and
 //     retry once), then publish the public key.
+//
+// A fourth case rides on the first: an identity minted before the hybrid
+// post-quantum upgrade carries no ML-KEM seed. Once the published key is
+// confirmed to be ours, the seed is added and the hybrid key replaces it
+// (upgrade, not rotate — the X25519 half is unchanged, so every wrapped DEK
+// stays openable). The order matters: upgrading before the comparison would
+// overwrite a substituted key and hide the very attack the check exists for.
 
 import { getHttpStatus } from "@/api/httpError";
 import { getCurrentUser, getVault, updatePublicKey, updateVault } from "@/api/wharf";
@@ -26,8 +33,10 @@ import { getMasterPassword } from "@/auth/masterSecret";
 import type { UnlockedVault } from "@/crypto";
 import {
   CryptoError,
+  encodeIdentity,
   fromBase64,
   generateKeypair,
+  newMlkemSeed,
   openWithDek,
   publicKeyFingerprint,
   sealPayload,
@@ -84,11 +93,21 @@ export function withIdentity(payload: Uint8Array, identity: VaultIdentity): Uint
   return encoder.encode(JSON.stringify(raw));
 }
 
+// keysFromIdentity decodes a stored identity into the wire forms the server and
+// the DEK wrapping use: the bare X25519 keys for a pre-hybrid identity, the
+// versioned hybrid blobs once an ML-KEM seed is present.
 function keysFromIdentity(identity: VaultIdentity): IdentityKeys {
-  return {
-    publicKey: fromBase64(identity.x25519Pub),
-    privateKey: fromBase64(identity.x25519Priv),
-  };
+  return encodeIdentity(
+    fromBase64(identity.x25519Pub),
+    fromBase64(identity.x25519Priv),
+    identity.mlkemSeed ? fromBase64(identity.mlkemSeed) : undefined,
+  );
+}
+
+// publicKeyBase64 is what gets published for an identity — the encoded public
+// key, NOT the raw x25519Pub field, which is only half of a hybrid identity.
+function publicKeyBase64(identity: VaultIdentity): string {
+  return toBase64(keysFromIdentity(identity).publicKey);
 }
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
@@ -206,15 +225,52 @@ async function generateAndStore(
   expectedVersion: number,
 ): Promise<IdentityKeys> {
   const kp = await generateKeypair();
+  // A fresh identity is always hybrid: the X25519 keypair plus the ML-KEM half
+  // that makes DEKs sealed to it quantum-safe.
   const identity: VaultIdentity = {
     x25519Priv: toBase64(kp.privateKey),
     x25519Pub: toBase64(kp.publicKey),
+    mlkemSeed: toBase64(newMlkemSeed()),
     createdAt: new Date().toISOString(),
   };
   const { payload, blob, version } = await pushIdentity(session, identity, expectedVersion);
   await persistIdentityLocally(payload, blob, version);
-  await publishKey(identity.x25519Pub);
+  await publishKey(publicKeyBase64(identity));
   return keysFromIdentity(identity);
+}
+
+// upgradeToHybrid adds the ML-KEM half to a pre-hybrid identity, persists it into
+// the personal vault and replaces the published key with the hybrid form. It runs
+// only after the published key has been confirmed to be ours.
+//
+// `upgrade: true` (not `rotate`) is what keeps every wrapped DEK in place: the new
+// key embeds the same X25519 key, so the existing sealed boxes still open.
+//
+// A failure is deliberately swallowed and the original identity returned: the
+// account stays on the classical identity, which still works, and blocking the
+// user out of their projects over a best-effort upgrade would be the worse
+// outcome. The next pass tries again.
+async function upgradeToHybrid(
+  session: UnlockedVault,
+  identity: VaultIdentity,
+  expectedVersion: number,
+): Promise<VaultIdentity> {
+  if (identity.mlkemSeed) {
+    return identity;
+  }
+  const upgraded: VaultIdentity = { ...identity, mlkemSeed: toBase64(newMlkemSeed()) };
+  try {
+    const { payload, blob, version } = await pushIdentity(session, upgraded, expectedVersion);
+    await persistIdentityLocally(payload, blob, version);
+    await updatePublicKey({
+      publicKey: publicKeyBase64(upgraded),
+      rotate: false,
+      upgrade: true,
+    });
+  } catch {
+    return identity;
+  }
+  return upgraded;
 }
 
 // ensureIdentity resolves the account's project identity for the current unlocked
@@ -233,7 +289,7 @@ export async function ensureIdentity(expectedVersion: number): Promise<IdentityS
   const doc = parseVaultDocument(session.payload);
   if (doc.identity) {
     if (!serverKey) {
-      await publishKey(doc.identity.x25519Pub);
+      await publishKey(publicKeyBase64(doc.identity));
       setIdentityMismatch(null);
       return { kind: "ready", keys: keysFromIdentity(doc.identity) };
     }
@@ -242,12 +298,13 @@ export async function ensureIdentity(expectedVersion: number): Promise<IdentityS
     // holds. Compare them: if they differ, every DEK sealed "to us" is being
     // sealed to a key we cannot open — a substituted key is silent otherwise,
     // showing up only as projects stuck in awaiting-access.
-    const mismatch = compareServerKey(doc.identity.x25519Pub, serverKey);
+    const mismatch = compareServerKey(publicKeyBase64(doc.identity), serverKey);
     setIdentityMismatch(mismatch);
     if (mismatch) {
       return { kind: "key-mismatch", ...mismatch };
     }
-    return { kind: "ready", keys: keysFromIdentity(doc.identity) };
+    const upgraded = await upgradeToHybrid(session, doc.identity, expectedVersion);
+    return { kind: "ready", keys: keysFromIdentity(upgraded) };
   }
 
   if (serverKey) {
@@ -260,7 +317,7 @@ export async function ensureIdentity(expectedVersion: number): Promise<IdentityS
     if (syncedDoc?.identity) {
       // Same check as above: the identity that just arrived must also match what
       // the server publishes for us.
-      const mismatch = compareServerKey(syncedDoc.identity.x25519Pub, serverKey);
+      const mismatch = compareServerKey(publicKeyBase64(syncedDoc.identity), serverKey);
       setIdentityMismatch(mismatch);
       if (mismatch) {
         return { kind: "key-mismatch", ...mismatch };
@@ -290,7 +347,7 @@ export async function republishLocalPublicKey(): Promise<void> {
   if (!doc?.identity) {
     throw new CryptoError("corrupt", "no local identity to republish");
   }
-  await updatePublicKey({ publicKey: doc.identity.x25519Pub, rotate: true });
+  await updatePublicKey({ publicKey: publicKeyBase64(doc.identity), rotate: true });
   // The server now holds our key; clear the interlock so the next pass can seal
   // again without waiting for a full identity re-check.
   setIdentityMismatch(null);

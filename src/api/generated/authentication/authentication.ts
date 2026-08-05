@@ -13,6 +13,7 @@ import type {
   AuthResponse,
   ChangePasswordRequest,
   LoginRequest,
+  LogoutRequest,
   RecoveryResetRequest,
   RecoveryVerifyRequest,
   RecoveryVerifyResponse,
@@ -145,6 +146,20 @@ const changePassword = (
       options);
     }
   /**
+ * Always answers 204 and always returns the clearing refresh cookie (Max-Age=0), so a browser can drop its httpOnly cookie even when its access token has already expired — which is precisely when people sign out. Without allDevices this is a *local* sign-out: the refresh token itself stays cryptographically valid until it expires, because the design is stateless and there is no server-side token store. With allDevices=true the account's token version is bumped and every issued token dies immediately, including the paired TUI and mobile clients; that variant requires a valid identity token (401 without one), so nobody can revoke someone else's sessions.
+ * @summary End the session in this browser, or revoke every session
+ */
+const logout = (
+    logoutRequest?: BodyType<LogoutRequest>,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/auth/logout`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: logoutRequest
+    },
+      options);
+    }
+  /**
  * In COOKIE mode the refresh token is set as an httpOnly cookie; in DIRECT mode it is returned in the body.
  * @summary Authenticate with the derived auth key
  */
@@ -158,7 +173,7 @@ const login = (
     },
       options);
     }
-  return {verifyEmail,setupAccount,resendVerification,register,refresh,recoverVerify,recoverReset,changePassword,login}};
+  return {verifyEmail,setupAccount,resendVerification,register,refresh,recoverVerify,recoverReset,changePassword,logout,login}};
 export type VerifyEmailResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['verifyEmail']>>>
 export type SetupAccountResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['setupAccount']>>>
 export type ResendVerificationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['resendVerification']>>>
@@ -167,4 +182,5 @@ export type RefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof get
 export type RecoverVerifyResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['recoverVerify']>>>
 export type RecoverResetResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['recoverReset']>>>
 export type ChangePasswordResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['changePassword']>>>
+export type LogoutResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['logout']>>>
 export type LoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAuthentication>['login']>>>

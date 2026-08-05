@@ -10,8 +10,12 @@
 import type { LoginRequestTokenMode } from './loginRequestTokenMode';
 
 export interface LoginRequest {
+  /** @minLength 1 */
   email: string;
-  /** base64 HKDF-derived authentication key */
+  /**
+     * base64 HKDF-derived authentication key
+     * @minLength 1
+     */
   authKey: string;
   /** Token delivery mode; defaults to COOKIE for browsers */
   tokenMode?: LoginRequestTokenMode;

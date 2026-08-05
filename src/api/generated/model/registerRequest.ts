@@ -13,10 +13,17 @@ import type { RegisterRequestTokenMode } from './registerRequestTokenMode';
  * Create a new zero-knowledge account
  */
 export interface RegisterRequest {
+  /** @minLength 1 */
   email: string;
-  /** base64 HKDF-derived authentication key (never the password) */
+  /**
+     * base64 HKDF-derived authentication key (never the password)
+     * @minLength 1
+     */
   authKey: string;
-  /** base64 HKDF-derived recovery authentication key */
+  /**
+     * base64 HKDF-derived recovery authentication key
+     * @minLength 1
+     */
   recoveryAuthKey: string;
   /**
      * Base64-encoded ciphertext vault blob (WHARFV format)

@@ -12,7 +12,10 @@
  * Exchange a pairing code for a TUI session
  */
 export interface DeviceCodeExchangeRequest {
-  /** The pairing code; dashes and case are normalised */
+  /**
+     * The pairing code; dashes and case are normalised
+     * @minLength 1
+     */
   code: string;
   /**
      * Optional human-readable name for the device

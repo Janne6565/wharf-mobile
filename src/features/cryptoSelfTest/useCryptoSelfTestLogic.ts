@@ -6,8 +6,11 @@ import {
   deriveMasterKey,
   deriveRecoveryAuthKey,
   encodeCrockford,
+  encodeIdentity,
   fromBase64,
   generateKeypair,
+  HYBRID_WRAPPED_DEK_LEN,
+  newMlkemSeed,
   openDek,
   openProject,
   sealDek,
@@ -117,6 +120,45 @@ const CHECKS: readonly Check[] = [
       const blob = await sealProject(dek, payload);
       const reopened = await openProject(dek, blob);
       assert(bytesEqual(reopened, payload), "round-trip mismatch");
+    },
+  },
+  {
+    name: "Hybrid ML-KEM-768 unwrap (Go fixture)",
+    run: async () => {
+      const opened = await openDek(
+        fromBase64(projectFixture.hybridWrappedDekBase64),
+        fromBase64(projectFixture.hybridPublicKeyBase64),
+        fromBase64(projectFixture.hybridPrivateKeyBase64),
+      );
+      assert(bytesEqual(opened, fromBase64(projectFixture.dekBase64)), "DEK mismatch");
+    },
+  },
+  {
+    name: "Hybrid identity opens its pre-upgrade sealed box",
+    run: async () => {
+      // The property the migration rests on: the upgraded identity keeps its
+      // X25519 half, so a v1 wrap still opens under the v2 keypair.
+      const opened = await openDek(
+        fromBase64(projectFixture.wrappedDekBase64),
+        fromBase64(projectFixture.hybridPublicKeyBase64),
+        fromBase64(projectFixture.hybridPrivateKeyBase64),
+      );
+      assert(bytesEqual(opened, fromBase64(projectFixture.dekBase64)), "DEK mismatch");
+    },
+  },
+  {
+    name: "Hybrid seal + open round-trip",
+    run: async () => {
+      const { publicKey, privateKey } = await generateKeypair();
+      const { publicKey: pub, privateKey: priv } = encodeIdentity(
+        publicKey,
+        privateKey,
+        newMlkemSeed(),
+      );
+      const dek = encoder.encode("0123456789abcdef0123456789abcdef");
+      const wrapped = await sealDek(dek, pub);
+      assert(wrapped.length === HYBRID_WRAPPED_DEK_LEN, "unexpected hybrid wrap length");
+      assert(bytesEqual(await openDek(wrapped, pub, priv), dek), "round-trip mismatch");
     },
   },
   {

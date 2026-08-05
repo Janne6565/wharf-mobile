@@ -13,12 +13,22 @@ import type { RecoveryResetRequestTokenMode } from './recoveryResetRequestTokenM
  * Re-encrypt the vault under a new password and rotate the recovery code
  */
 export interface RecoveryResetRequest {
+  /** @minLength 1 */
   email: string;
-  /** The current recovery authentication key (proves ownership) */
+  /**
+     * The current recovery authentication key (proves ownership)
+     * @minLength 1
+     */
   recoveryAuthKey: string;
-  /** New base64 authentication key derived from the new password */
+  /**
+     * New base64 authentication key derived from the new password
+     * @minLength 1
+     */
   newAuthKey: string;
-  /** New base64 recovery authentication key for the freshly issued recovery code */
+  /**
+     * New base64 recovery authentication key for the freshly issued recovery code
+     * @minLength 1
+     */
   newRecoveryAuthKey: string;
   /**
      * Base64-encoded vault blob re-encrypted with the new key material

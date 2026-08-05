@@ -389,6 +389,33 @@ func TestConnectPasswordAuth(t *testing.T) {
 	}
 }
 
+// TestKexIsPostQuantum guards the pin in preferredKexAlgos: against a server
+// that offers it, the negotiated key exchange must be the hybrid ML-KEM-768 +
+// X25519 one. Without the explicit Config we would merely inherit x/crypto's
+// default order, which a dependency bump could reorder silently.
+func TestKexIsPostQuantum(t *testing.T) {
+	cb := newFakeCB()
+	eng := newEngine(t, cb)
+	ts := startPasswordServer(t, testPassword, echoHandler)
+
+	if err := connect(eng, "s1", ts, testPassword); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(func() { eng.Close("s1") })
+
+	s := eng.get("s1")
+	if s == nil {
+		t.Fatal("session not registered after connect")
+	}
+	meta, ok := s.client.Conn.(gossh.AlgorithmsConnMetadata)
+	if !ok {
+		t.Fatal("client conn does not report negotiated algorithms")
+	}
+	if got := meta.Algorithms().KeyExchange; got != gossh.KeyExchangeMLKEM768X25519 {
+		t.Fatalf("negotiated kex = %q, want %q", got, gossh.KeyExchangeMLKEM768X25519)
+	}
+}
+
 func TestStoredPasswordSilentReplay(t *testing.T) {
 	cb := newFakeCB()
 	eng := newEngine(t, cb)
