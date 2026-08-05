@@ -9,19 +9,25 @@
  */
 
 export * from './accessTokenResponse';
+export * from './accountDeletionPreview';
 export * from './accountSetupRequest';
 export * from './authResponse';
 export * from './changePasswordRequest';
 export * from './createInviteRequest';
 export * from './createProjectRequest';
+export * from './deleteAccountRequest';
 export * from './deviceCodeExchangeRequest';
 export * from './deviceCodeResponse';
 export * from './loginRequest';
 export * from './loginRequestTokenMode';
+export * from './logoutRequest';
 export * from './myInvite';
+export * from './notificationPreferencesResponse';
+export * from './notificationPreferencesResponsePreferences';
 export * from './oauthAuthorizeParams';
 export * from './oauthCallbackParams';
 export * from './oAuthProvidersResponse';
+export * from './ownedProjectImpact';
 export * from './pendingKey';
 export * from './project';
 export * from './projectInvite';
@@ -47,6 +53,8 @@ export * from './submitWrappedKeyRequest';
 export * from './tokenPair';
 export * from './updateMemberRoleRequest';
 export * from './updateMemberRoleRequestRole';
+export * from './updateNotificationPreferencesRequest';
+export * from './updateNotificationPreferencesRequestPreferences';
 export * from './updateProjectRequest';
 export * from './updatePublicKeyRequest';
 export * from './updateVaultRequest';

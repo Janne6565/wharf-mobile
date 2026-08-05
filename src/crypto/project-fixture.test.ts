@@ -1,7 +1,8 @@
 import fixture from "./__fixtures__/project-fixture.json";
 import { fromBase64 } from "./base64";
+import { encodeIdentity, HYBRID_PUB_LEN, HYBRID_WRAPPED_DEK_LEN } from "./hybrid";
 import { openProject, sealProject } from "./wharfp";
-import { openDek } from "./x25519";
+import { openDek, sealDek } from "./x25519";
 
 // Byte-compatibility proof for the Wharf Projects crypto layer. The fixture was
 // produced by wharf-tui's Go `internal/vault` (TestWriteProjectFixture): a
@@ -20,6 +21,39 @@ describe("byte-compat with wharf-tui Go project crypto", () => {
   it("unwraps the Go sealed-box DEK to the exact DEK bytes", async () => {
     const opened = await openDek(wrappedDek, pub, priv);
     expect(opened).toEqual(dek);
+  });
+
+  it("unwraps the Go hybrid (ML-KEM-768 + X25519) DEK to the same DEK bytes", async () => {
+    const hybridPub = fromBase64(fixture.hybridPublicKeyBase64);
+    const hybridPriv = fromBase64(fixture.hybridPrivateKeyBase64);
+    const hybridWrapped = fromBase64(fixture.hybridWrappedDekBase64);
+
+    expect(hybridPub.length).toBe(HYBRID_PUB_LEN);
+    expect(hybridWrapped.length).toBe(HYBRID_WRAPPED_DEK_LEN);
+    // The hybrid identity embeds the very X25519 key the v1 fixture uses: that
+    // is what lets an upgraded account still open its pre-upgrade DEKs.
+    expect(hybridPub.subarray(1, 33)).toEqual(pub);
+
+    expect(await openDek(hybridWrapped, hybridPub, hybridPriv)).toEqual(dek);
+    // ...and the classical wrap still opens with the upgraded identity.
+    expect(await openDek(wrappedDek, hybridPub, hybridPriv)).toEqual(dek);
+  });
+
+  it("derives the same hybrid public key Go did from the stored seed", async () => {
+    const hybridPub = fromBase64(fixture.hybridPublicKeyBase64);
+    const hybridPriv = fromBase64(fixture.hybridPrivateKeyBase64);
+    const encoded = encodeIdentity(pub, priv, hybridPriv.subarray(33));
+    expect(encoded.publicKey).toEqual(hybridPub);
+    expect(encoded.privateKey).toEqual(hybridPriv);
+  });
+
+  it("wraps to the Go hybrid public key in a form it can open again", async () => {
+    const hybridPub = fromBase64(fixture.hybridPublicKeyBase64);
+    const hybridPriv = fromBase64(fixture.hybridPrivateKeyBase64);
+    const wrapped = await sealDek(dek, hybridPub);
+    expect(wrapped.length).toBe(HYBRID_WRAPPED_DEK_LEN);
+    expect(wrapped[0]).toBe(0x02);
+    expect(await openDek(wrapped, hybridPub, hybridPriv)).toEqual(dek);
   });
 
   it("opens the Go WHARFP blob to the exact payload", async () => {

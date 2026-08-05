@@ -12,5 +12,6 @@
  * Ask for a fresh verification code. The response is always 202, whether or not the address belongs to an account, so it cannot be used to probe registrations.
  */
 export interface ResendVerificationRequest {
+  /** @minLength 1 */
   email: string;
 }

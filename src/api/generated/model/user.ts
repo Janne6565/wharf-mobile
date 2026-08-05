@@ -14,5 +14,7 @@
 export interface User {
   id?: string;
   email?: string;
+  /** Whether the email address has been proven with a one-time code */
+  emailVerified?: boolean;
   createdAt?: string;
 }

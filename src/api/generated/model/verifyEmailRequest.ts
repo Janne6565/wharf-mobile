@@ -13,9 +13,11 @@ import type { VerifyEmailRequestTokenMode } from './verifyEmailRequestTokenMode'
  * Complete registration with the emailed 6-digit code
  */
 export interface VerifyEmailRequest {
+  /** @minLength 1 */
   email: string;
   /**
      * The 6-digit code from the verification email
+     * @minLength 1
      * @pattern \d{6}
      */
   code: string;

@@ -12,9 +12,15 @@
  * Rotate the master-password auth key and re-encrypt the vault under the new password. The recovery code is unchanged, so its slot in the vault blob stays valid.
  */
 export interface ChangePasswordRequest {
-  /** The current base64 authentication key (proves the caller knows the current password) */
+  /**
+     * The current base64 authentication key (proves the caller knows the current password)
+     * @minLength 1
+     */
   currentAuthKey: string;
-  /** New base64 authentication key derived from the new password */
+  /**
+     * New base64 authentication key derived from the new password
+     * @minLength 1
+     */
   newAuthKey: string;
   /**
      * Base64-encoded vault blob re-encrypted under the new password (recovery slot unchanged)

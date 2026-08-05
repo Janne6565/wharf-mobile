@@ -12,7 +12,10 @@
  * One-time onboarding for an account created via OAuth: atomically sets the recovery key, the initial encrypted vault, and (optionally) the password auth key derived from the same master password the vault was encrypted with
  */
 export interface AccountSetupRequest {
-  /** base64 HKDF-derived recovery authentication key for the freshly generated recovery code */
+  /**
+     * base64 HKDF-derived recovery authentication key for the freshly generated recovery code
+     * @minLength 1
+     */
   recoveryAuthKey: string;
   /**
      * Base64-encoded initial ciphertext vault blob (WHARFV format)

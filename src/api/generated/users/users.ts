@@ -8,8 +8,12 @@
  * OpenAPI spec version: v1
  */
 import type {
+  AccountDeletionPreview,
+  DeleteAccountRequest,
   MyInvite,
+  NotificationPreferencesResponse,
   ProjectSummary,
+  UpdateNotificationPreferencesRequest,
   UpdatePublicKeyRequest,
   UserProfile
 } from '../model';
@@ -59,7 +63,33 @@ const acceptInvite = (
       options);
     }
   /**
- * Includes hasPassword / hasRecovery / hasVault flags and the account's public key.
+ * Returns all seven keys, always. Security notices (recovery code used, master password changed/set, device paired, sign-in provider linked, account deleted) are not listed: they have no key and cannot be turned off.
+ * @summary Get the account's collaboration-mail preferences
+ */
+const getNotificationPreferences = (
+
+ options?: SecondParameter<typeof customInstance<NotificationPreferencesResponse>>,) => {
+      return customInstance<NotificationPreferencesResponse>(
+      {url: `/api/v1/users/me/notifications`, method: 'GET'
+    },
+      options);
+    }
+  /**
+ * Partial: only the keys present are changed. Send a single key to toggle one notification, or all seven to set the whole group at once. Every key is validated before any is applied, so one bad key changes nothing. Returns the full, updated set.
+ * @summary Change one or more collaboration-mail preferences
+ */
+const updateNotificationPreferences = (
+    updateNotificationPreferencesRequest: BodyType<UpdateNotificationPreferencesRequest>,
+ options?: SecondParameter<typeof customInstance<NotificationPreferencesResponse>>,) => {
+      return customInstance<NotificationPreferencesResponse>(
+      {url: `/api/v1/users/me/notifications`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updateNotificationPreferencesRequest
+    },
+      options);
+    }
+  /**
+ * Includes the emailVerified flag, the hasPassword / hasRecovery / hasVault flags and the account's public key.
  * @summary Get the authenticated account's profile
  */
 const getCurrentUser = (
@@ -67,6 +97,20 @@ const getCurrentUser = (
  options?: SecondParameter<typeof customInstance<UserProfile>>,) => {
       return customInstance<UserProfile>(
       {url: `/api/v1/users/me`, method: 'GET'
+    },
+      options);
+    }
+  /**
+ * Deletes the account, its personal vault, its OAuth links and device codes, its memberships, and — outright — every project it owns, including projects that still have other members (they lose access). All in one transaction: it either all happens or none of it does. There is no undo and no server-side copy to restore from: the server only ever held ciphertext. Because this destroys data for other people too, it is re-authenticated: an account with a master password must supply its current authKey. An OAuth-only account has no password to prove and may omit the body. Use /users/me/deletion-preview first to show the caller exactly what will be lost.
+ * @summary Irreversibly delete the authenticated account and everything it owns
+ */
+const deleteAccount = (
+    deleteAccountRequest?: BodyType<DeleteAccountRequest>,
+ options?: SecondParameter<typeof customInstance<void>>,) => {
+      return customInstance<void>(
+      {url: `/api/v1/users/me`, method: 'DELETE',
+      headers: {'Content-Type': 'application/json', },
+      data: deleteAccountRequest
     },
       options);
     }
@@ -81,9 +125,25 @@ const getMyInvites = (
     },
       options);
     }
-  return {updatePublicKey,declineInvite,acceptInvite,getCurrentUser,getMyInvites}};
+  /**
+ * Read-only. Lists the projects the caller owns (each deleted with the account, together with the number of other members who would lose access) and how many further projects the caller is only a member of (those survive; only the membership is removed).
+ * @summary Preview what deleting the account would destroy
+ */
+const getAccountDeletionPreview = (
+
+ options?: SecondParameter<typeof customInstance<AccountDeletionPreview>>,) => {
+      return customInstance<AccountDeletionPreview>(
+      {url: `/api/v1/users/me/deletion-preview`, method: 'GET'
+    },
+      options);
+    }
+  return {updatePublicKey,declineInvite,acceptInvite,getNotificationPreferences,updateNotificationPreferences,getCurrentUser,deleteAccount,getMyInvites,getAccountDeletionPreview}};
 export type UpdatePublicKeyResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['updatePublicKey']>>>
 export type DeclineInviteResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['declineInvite']>>>
 export type AcceptInviteResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['acceptInvite']>>>
+export type GetNotificationPreferencesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['getNotificationPreferences']>>>
+export type UpdateNotificationPreferencesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['updateNotificationPreferences']>>>
 export type GetCurrentUserResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['getCurrentUser']>>>
+export type DeleteAccountResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['deleteAccount']>>>
 export type GetMyInvitesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['getMyInvites']>>>
+export type GetAccountDeletionPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getUsers>['getAccountDeletionPreview']>>>

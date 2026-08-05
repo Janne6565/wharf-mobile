@@ -10,6 +10,27 @@ import (
 // PTY baud rate reported to the server. Cosmetic; matches the wharf-tui engine.
 const ptyBaud = 14400
 
+// preferredKexAlgos pins the key-exchange preference order, mirroring
+// wharf-tui's internal/sshx. mlkem768x25519-sha256 leads: it is a hybrid
+// ML-KEM-768 + X25519 exchange, so a recorded session cannot be decrypted later
+// by a quantum attacker (OpenSSH 9.9+ / 10 negotiate it; older servers fall
+// through to classical X25519 as before).
+//
+// The list is deliberately identical to x/crypto/ssh's own default, including
+// the SHA-1 Diffie-Hellman tail — the point is to pin what we would otherwise
+// inherit, so a dependency bump that reorders the default cannot silently drop
+// the post-quantum exchange. Compatibility is unchanged; only the guarantee is
+// new. TestKexIsPostQuantum asserts the negotiated result.
+var preferredKexAlgos = []string{
+	ssh.KeyExchangeMLKEM768X25519,
+	ssh.KeyExchangeCurve25519,
+	ssh.KeyExchangeECDHP256,
+	ssh.KeyExchangeECDHP384,
+	ssh.KeyExchangeECDHP521,
+	ssh.KeyExchangeDH14SHA256,
+	ssh.InsecureKeyExchangeDH14SHA1,
+}
+
 // dial connects, authenticates, requests a PTY, starts the remote shell and
 // the output pump, and registers the session under sessionID. ctx bounds the
 // whole dial+handshake+auth; once it returns nil the session runs until it
@@ -25,6 +46,7 @@ func (e *Engine) dial(ctx context.Context, sessionID, host, addr, user, storedPa
 		Auth:              e.authMethods(ctx, sessionID, user, host, storedPassword, authMethod, keys),
 		HostKeyCallback:   e.hostKeyCallback(ctx, sessionID, db),
 		HostKeyAlgorithms: db.HostKeyAlgorithms(addr),
+		Config:            ssh.Config{KeyExchanges: preferredKexAlgos},
 	}
 
 	var dialer net.Dialer
