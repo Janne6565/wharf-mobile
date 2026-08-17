@@ -6,7 +6,7 @@
 const config = {
   name: "Wharf",
   slug: "wharf-mobile",
-  version: "0.1.1",
+  version: "0.1.2",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "wharf",

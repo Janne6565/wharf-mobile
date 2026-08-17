@@ -19,8 +19,9 @@ export default function CryptoSelfTestScreen() {
       ? t("cryptoSelfTest.allPassed")
       : t("cryptoSelfTest.someFailed");
 
+  // This screen manages its own ScrollView, so the container must not add one.
   return (
-    <ScreenContainer>
+    <ScreenContainer scrollable={false}>
       <Stack.Screen options={{ headerShown: true, title: t("cryptoSelfTest.title") }} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="pt-2 pb-8">
