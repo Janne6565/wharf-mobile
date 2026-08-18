@@ -272,3 +272,40 @@ describe("deleteHostFromPayload", () => {
     );
   });
 });
+
+// The mobile form owns name/user/addr/port/tags only. A host's key binding
+// (schema 5), like its password, belongs to the TUI that wrote it and must
+// survive an edit here untouched — otherwise editing a host on the phone
+// silently unbinds it and the next connect walks the whole vault again.
+describe("schema-5 keyId", () => {
+  const payload = new TextEncoder().encode(
+    JSON.stringify({
+      schema: 5,
+      hosts: [
+        {
+          id: "abc",
+          name: "prod",
+          user: "root",
+          addr: "10.0.0.1",
+          port: 22,
+          keyId: "key-1",
+          password: "s3cret",
+        },
+      ],
+    }),
+  );
+
+  it("survives an edit", () => {
+    const out = updateHostInPayload(payload, "abc", {
+      name: "prod",
+      user: "deploy",
+      addr: "10.0.0.1",
+      port: 22,
+      tags: [],
+    });
+    const host = JSON.parse(new TextDecoder().decode(out)).hosts[0];
+    expect(host.keyId).toBe("key-1");
+    expect(host.password).toBe("s3cret");
+    expect(host.user).toBe("deploy");
+  });
+});

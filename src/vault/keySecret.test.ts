@@ -40,3 +40,34 @@ describe("extractVaultKeyRefs", () => {
     expect(extractVaultKeyRefs(enc("{not json"))).toEqual([]);
   });
 });
+
+describe("bound key (schema 5)", () => {
+  const payload = new TextEncoder().encode(
+    JSON.stringify({
+      schema: 5,
+      hosts: [],
+      keys: [
+        { id: "1111", name: "work", material: "bWF0LTE=" },
+        { id: "2222", name: "other", material: "bWF0LTI=" },
+      ],
+    }),
+  );
+
+  // Every key offered spends one of the server's MaxAuthTries, so a host that
+  // knows its key must not drag the rest of the vault along.
+  it("returns only the bound key", () => {
+    expect(extractVaultKeyRefs(payload, "1111")).toEqual([
+      { name: "work", materialB64: "bWF0LTE=" },
+    ]);
+  });
+
+  it("offers every key when the host is unbound", () => {
+    expect(extractVaultKeyRefs(payload)).toHaveLength(2);
+  });
+
+  // The key may have been removed on another device. Trying every key beats
+  // trying none.
+  it("falls back to every key when the binding resolves to nothing", () => {
+    expect(extractVaultKeyRefs(payload, "9999")).toHaveLength(2);
+  });
+});

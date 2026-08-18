@@ -227,7 +227,9 @@ export function useTerminalLogic() {
       // keys. The stored password is still passed in key mode: the engine replays
       // it as the password fallback when the synced keys are unusable.
       const authMethod = target.authMethod === "password" ? "password" : "key";
-      const keys = authMethod === "key" ? readVaultKeyRefs() : undefined;
+      // A host bound to one synced key offers only that key (schema 5); an
+      // unbound host still offers all of them.
+      const keys = authMethod === "key" ? readVaultKeyRefs(target.keyId) : undefined;
 
       try {
         await connect({

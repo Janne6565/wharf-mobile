@@ -18,6 +18,11 @@
 //       by rendering a key object. The material is read transiently at connect
 //       time only (see keySecret.ts). Earlier schemas simply have `keys` absent,
 //       so parsing accepts 1–3 and never rejects on version.
+//   4 — schema 3 plus an optional `identity.mlkemSeed` (the post-quantum half of
+//       project-DEK wrapping).
+//   5 — schema 4 plus an optional per-host `keyId`: the one synced key that host
+//       authenticates with, by `keys[].id`. Absent means unbound — every synced
+//       key is offered, as before — so parsing again never rejects on version.
 
 // A stored SSH connection. Mirrors the Go host shape minus `password`, which is
 // intentionally absent from the type so it is never carried into the UI.
@@ -29,6 +34,10 @@ export interface VaultHost {
   readonly port: number;
   readonly tags?: readonly string[];
   readonly keyPath?: string;
+  // The synced key this host authenticates with (schema 5), by VaultKey id.
+  // Unbound hosts omit it and are offered every synced key. Only the id travels
+  // into the UI — never the key material, which stays in keySecret.ts.
+  readonly keyId?: string;
   readonly authMethod?: "key" | "password" | "";
   readonly source?: "manual" | "ssh_config";
   readonly lastSeen?: string;
@@ -78,6 +87,7 @@ interface RawHost {
   port?: unknown;
   tags?: unknown;
   keyPath?: unknown;
+  keyId?: unknown;
   authMethod?: unknown;
   source?: unknown;
   lastSeen?: unknown;
@@ -110,6 +120,7 @@ function toHost(raw: RawHost): VaultHost {
     port: typeof raw.port === "number" ? raw.port : 0,
     ...(tags && tags.length > 0 ? { tags } : {}),
     ...(raw.keyPath !== undefined ? { keyPath: optionalStr(raw.keyPath) } : {}),
+    ...(raw.keyId !== undefined ? { keyId: optionalStr(raw.keyId) } : {}),
     ...(authMethod !== undefined ? { authMethod } : {}),
     ...(source !== undefined ? { source } : {}),
     ...(raw.lastSeen !== undefined ? { lastSeen: optionalStr(raw.lastSeen) } : {}),

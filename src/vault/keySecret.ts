@@ -14,7 +14,17 @@ import { getVaultSession } from "./vaultSession";
 // material. The result is sorted by name to match the TUI's stable store order,
 // so the engine offers keys deterministically. Pure (payload in, refs out) so it
 // unit-tests without a live session.
-export function extractVaultKeyRefs(payload: Uint8Array): readonly SshVaultKeyRef[] {
+//
+// boundKeyId is a host's schema-5 `keyId`. When it names a key that is present,
+// ONLY that key is returned: every key offered spends one of the server's
+// MaxAuthTries (6 by default), so a synced fleet of keys can exhaust the budget
+// before the right one is reached. A binding that resolves to nothing — the key
+// was removed on another device — falls back to the full list, which is a better
+// answer than offering nothing.
+export function extractVaultKeyRefs(
+  payload: Uint8Array,
+  boundKeyId?: string,
+): readonly SshVaultKeyRef[] {
   let doc: { keys?: unknown };
   try {
     doc = JSON.parse(new TextDecoder().decode(payload)) as { keys?: unknown };
@@ -27,6 +37,9 @@ export function extractVaultKeyRefs(payload: Uint8Array): readonly SshVaultKeyRe
     if (typeof key === "object" && key !== null) {
       const raw = key as Record<string, unknown>;
       if (typeof raw.name === "string" && typeof raw.material === "string") {
+        if (boundKeyId && raw.id === boundKeyId) {
+          return [{ name: raw.name, materialB64: raw.material }];
+        }
         refs.push({ name: raw.name, materialB64: raw.material });
       }
     }
@@ -35,12 +48,13 @@ export function extractVaultKeyRefs(payload: Uint8Array): readonly SshVaultKeyRe
 }
 
 // readVaultKeyRefs resolves the synced key material for the current unlocked
-// session. Returns [] when the vault is locked or no keys are synced — the engine
-// then has no vault keys to offer and falls back to the password prompt.
-export function readVaultKeyRefs(): readonly SshVaultKeyRef[] {
+// session, narrowed to the host's bound key when it has one. Returns [] when the
+// vault is locked or no keys are synced — the engine then has no vault keys to
+// offer and falls back to the password prompt.
+export function readVaultKeyRefs(boundKeyId?: string): readonly SshVaultKeyRef[] {
   const session = getVaultSession();
   if (!session) {
     return [];
   }
-  return extractVaultKeyRefs(session.payload);
+  return extractVaultKeyRefs(session.payload, boundKeyId);
 }
